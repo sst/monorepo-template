@@ -1,1 +1,1 @@
-export const secret = new sst.Secret("MySecret", "my-secret-placeholder-value");
+export const bucket = new sst.aws.Bucket("MyBucket");
