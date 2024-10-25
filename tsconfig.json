@@ -1,1 +1,4 @@
-{}
+{
+  "extends": ["@acme/tsconfig/base.json"],
+  "exclude": ["apps", "packages", "node_modules"]
+}

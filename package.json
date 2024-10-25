@@ -1,15 +1,23 @@
 {
-  "name": "monorepo-template",
-  "version": "0.0.0",
+  "name": "coyote",
+  "private": true,
+  "description": "Web services for Acme Corporation's leading product, Coyote",
+  "license": "MIT",
+  "author": "Acme Corporation",
+  "type": "module",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "packages/config/*"
   ],
   "scripts": {},
-  "devDependencies": {
-    "@tsconfig/node20": "^20.1.4",
-    "typescript": "5.6.2"
-  },
   "dependencies": {
     "sst": "^3"
+  },
+  "devDependencies": {
+    "@acme/tsconfig": "workspace:^",
+    "@tsconfig/node20": "^20.1.4",
+    "@types/node": "^22.5.2",
+    "pkg-types": "^1.2.0",
+    "typescript": "5.6.2"
   }
 }
