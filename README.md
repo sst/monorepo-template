@@ -1,6 +1,6 @@
 # Monorepo Template
 
-A template to create a monorepo SST ❍ Ion project.
+A template to create a monorepo SST v3 project.
 
 ## Get started
 
@@ -13,7 +13,7 @@ A template to create a monorepo SST ❍ Ion project.
    cd MY_APP
    ```
 
-3. Rename the files in the project to the name of your app. 
+3. Rename the files in the project to the name of your app.
 
    ```bash
    npx replace-in-file '/monorepo-template/g' MY_APP **/*.* --verbose
@@ -26,7 +26,7 @@ A template to create a monorepo SST ❍ Ion project.
    npx sst deploy
    ```
 
-6. Optionally, enable [_git push to deploy_](https://ion.sst.dev/docs/console/#autodeploy).
+5. Optionally, enable [_git push to deploy_](https://sst.dev/docs/console/#autodeploy).
 
 ## Usage
 

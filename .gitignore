@@ -1,5 +1,8 @@
 # dependencies
-node_modules
+# root node_modules only
+# if you end up with child node_modules this means we accidentally have multiple versions
+# of a dependency, you should resolve that
+/node_modules
 
 # sst
 .sst

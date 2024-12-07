@@ -1,19 +1,18 @@
 {
   "name": "@monorepo-template/core",
   "version": "0.0.0",
+  "type": "module",
+  "sideEffects": false,
   "scripts": {
     "test": "sst shell vitest"
   },
   "exports": {
-    "./*": [
-      "./src/*/index.ts",
-      "./src/*.ts"
-    ]
+    "./*": "./src/*.ts"
   },
   "dependencies": {
     "sst": "*"
   },
   "devDependencies": {
-    "vitest": "^2.0.3"
+    "vitest": "^2.1.8"
   }
 }

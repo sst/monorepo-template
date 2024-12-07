@@ -1,11 +1,13 @@
 {
   "name": "@monorepo-template/functions",
   "version": "0.0.0",
+  "type": "module",
+  "sideEffects": false,
   "dependencies": {
     "@monorepo-template/core": "*",
     "sst": "*"
   },
   "devDependencies": {
-    "@types/aws-lambda": "^8.10.137"
+    "@types/aws-lambda": "^8.10.146"
   }
 }

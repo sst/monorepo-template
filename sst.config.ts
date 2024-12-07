@@ -1,4 +1,5 @@
 /// <reference path="./.sst/platform/config.d.ts" />
+import { readdirSync } from "node:fs";
 
 export default $config({
   app(input) {
@@ -9,11 +10,11 @@ export default $config({
     };
   },
   async run() {
-    await import("./infra/storage");
-    const api = await import("./infra/api");
-
-    return {
-      api: api.myApi.url,
-    };
+    const outputs = {};
+    for (const value of readdirSync("./infra/")) {
+      const result = await import("./infra/" + value);
+      if (result.outputs) Object.assign(outputs, result.outputs);
+    }
+    return outputs;
   },
 });

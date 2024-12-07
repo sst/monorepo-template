@@ -5,3 +5,7 @@ export const myApi = new sst.aws.Function("MyApi", {
   link: [bucket],
   handler: "packages/functions/src/api.handler"
 });
+
+export const outputs = {
+  api: myApi.url,
+};
