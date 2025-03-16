@@ -3,6 +3,8 @@
 This starter kit uses the following tech stack:
 
 1. **Core Framework and Runtime:**
+   - **SST**: SST is a framework for full-stack applications framework that supports Infrastructure as Code (IaC) via Pulumi or Terraform.
+     - Core SST configuration is stored in`sst.config.ts`
    - **Vite**: The build tool and development server for the application
      - Core Vite configuration in `vite.config.ts`
    - **React 18**: The underlying UI library for building components
@@ -18,6 +20,7 @@ This starter kit uses the following tech stack:
 3. **Data Fetching and State Management:**
    - **TanStack React Query**: For efficient server state management and data fetching
      - Example query hook structure in `src/hooks/`:
+
        ```typescript
        import { useQuery } from '@tanstack/react-query';
        import { supabase } from '@/lib/supabase';
@@ -80,6 +83,7 @@ This starter kit uses the following tech stack:
    - **cmdk**: For command palette functionality
 
 The project is set up as a modern web application with:
+
 - Type-safe development
 - Modern UI components
 - Responsive design
@@ -87,4 +91,3 @@ The project is set up as a modern web application with:
 - Rich component library
 
 This tech stack provides a robust foundation for building a scalable, secure, and user-friendly web application with modern features and best practices.
-

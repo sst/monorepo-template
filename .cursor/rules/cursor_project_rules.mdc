@@ -1,0 +1,93 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+## Project Overview
+
+*   **Type:** cursor_project_rules
+*   **Description:** <project_description>
+*   **Primary Goal:** <project_goal>>
+
+## Project Structure
+
+├── documents
+├── infra
+│   ├── api.ts
+│   └── storage.ts
+├── packages
+│   ├── shared
+│   ├── frontend
+│   ├── functions
+│   └── scripts
+
+
+### Framework-Specific Routing
+
+*   **Directory Rules:**
+
+    *   **reactJs:**  For React Router 6 projects, use `src/routes/` with `createBrowserRouter` for route management.
+
+### Core Directories
+
+*   **Versioned Structure:**
+
+### Key Files
+
+*   **Stack-Versioned Patterns:**
+
+
+## Tech Stack Rules
+
+*   **Version Enforcement:**
+
+    *   **typescript:** Enforce strict type-checking to reduce runtime errors.
+    *   **material design & tailwind css:** Follow UI/UX best practices and use responsive utility classes without over-cluttering the markup.
+    *   **supabase:** Leverage for additional backend needs and seamless data management.
+    *   **anthropic_claude_3_7_sonnet:** Use for advanced AI-powered code suggestions and reasoning integrations.
+
+## PRD Compliance
+
+*   **Non-Negotiable:**
+
+
+## App Flow Integration
+
+*   **Stack-Aligned Flow:**
+
+## Best Practices
+
+*   **next.js 14**
+
+    *   Enforce App Router with nested directories under `app/`.
+    *   Utilize server and client components appropriately to optimize performance.
+    *   Maintain clear separation between layout and page-level components.
+
+*   **typescript**
+
+    *   Use strict typing and avoid implicit any's.
+    *   Create reusable types/interfaces for shared data structures.
+    *   Integrate with eslint and prettier for code consistency.
+
+*   **material design & tailwind css**
+
+    *   Follow established design guidelines to ensure a cohesive UI.
+    *   Use Tailwind's utility-first approach while avoiding overuse of inline styles.
+    *   Ensure components are mobile-responsive and accessible.
+
+*   **supabase**
+
+    *   Use for additional backend storage and real-time data synchronization.
+    *   Ensure secure API integrations by using RLS and JWT authentication.
+    *   Maintain regular backups of data and utilize built-in monitoring tools.
+
+*   **anthropic_claude_3_7_sonnet**
+
+    *   Utilize for AI-powered code suggestions during development.
+    *   Integrate its feedback loop to improve code quality and reduce errors.
+    *   Regularly review AI suggestions for compliance with the platform's security and performance standards.
+
+## Rules
+
+*   Derive folder/file patterns **directly** from techStackDoc versions and established routing patterns.
+*   Maintain strict adherence to PRD requirements regarding <project_features>
