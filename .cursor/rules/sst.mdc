@@ -3,9 +3,2903 @@ description:
 globs: 
 alwaysApply: true
 ---
-- Ignore lint errors for any files in the `./infra/directory`. Prompt the user to run `npx sst install` in their terminal, and proceed after.
-- Never define SST with v2 syntax including the use of `sst/constructs` for imports.
-- Resrouces in `./infra` should always have a unique name when creating SST assets.
-- Prefix any resources with the name of the app as found in the root `package.json` file.
-- Initiate any SST resources by using the new javascript opperator to create an instance of the object.
-- Do not import sst with destructuring in any `./infra` file.
+To ensure you generate accurate SST v3 code using its modern syntax with TypeScript in a monorepo structure, please study this prompt carefully. SST v3 introduces a declarative approach to infrastructure as code, designed for developers to easily build full-stack applications on their own infrastructure. The examples below demonstrate how to use SST v3's components within a monorepo, separating infrastructure code into the `./infra/` directory and application code into the `./packages/` directory. When building applications with SST v3, use this structure to create maintainable and scalable infrastructure.
+
+#### Key Concepts in SST v3 Monorepo
+
+- **Monorepo Structure**: Organize code with infrastructure in `./infra/` and application code in `./packages/`.
+- **Components**: Define your application infrastructure in a declarative way using modular code.
+- **Resource Linking**: Connect infrastructure resources to your code (functions, frontends) with typesafe access.
+- **Configuration**: Configure your app in the root `sst.config.ts` file, with detailed components imported from the `./infra/` directory.
+- **SDK Integration**: Access your infrastructure resources at runtime through the SST SDK.
+- **Providers**: Built-in components for AWS and Cloudflare, plus access to 150+ Pulumi/Terraform providers.
+- **Developer Experience**: SST provides unified local development environment with `sst dev`.
+- **Deployment**: Deploy to multiple environments with `sst deploy --stage <stage>`.
+- **Package Management**: Share code between packages using workspace dependencies.
+
+The examples below illustrate these concepts with practical use cases. Each includes a task, the SST v3 code, and an explanation.
+
+---
+
+#### Example 1: Monorepo Structure Setup
+
+**Task**: Set up an SST app with a monorepo structure.
+
+**Project Structure**:
+```
+my-sst-app/
+├─ infra/           # Infrastructure code
+│  ├─ index.ts      # Main infrastructure entry point
+│  ├─ functions.ts  # Lambda function definitions
+│  ├─ storage.ts    # Storage resources (buckets, databases)
+│  └─ web.ts        # Frontend configurations
+├─ packages/        # Application code
+│  ├─ core/         # Shared code and types
+│  ├─ functions/    # Lambda function code
+│  └─ web/          # Frontend application
+├─ sst.config.ts    # Root configuration file
+├─ package.json     # Root package file
+└─ tsconfig.json    # TypeScript configuration
+```
+
+**Root sst.config.ts**:
+```typescript
+/// <reference path="./.sst/platform/config.d.ts" />
+import { run } from "./infra";
+
+export default $config({
+  app(input) {
+    return {
+      name: "my-sst-app",
+      removal: input?.stage === "production" ? "retain" : "remove",
+      home: "aws",
+    };
+  },
+  run
+});
+```
+
+**infra/index.ts**:
+```typescript
+import { setupFunctions } from "./functions";
+import { setupStorage } from "./storage";
+import { setupWeb } from "./web";
+
+export async function run() {
+  // Set up resources with imports from specialized modules
+  const storage = await setupStorage();
+  const functions = await setupFunctions(storage);
+  const web = await setupWeb(functions);
+  
+  return {
+    apiUrl: functions.api.url,
+    webUrl: web.url,
+    bucketName: storage.bucket.name
+  };
+}
+```
+
+**Explanation**: This establishes a monorepo structure for SST applications. The root `sst.config.ts` imports the main infrastructure setup from the `./infra/` directory. Infrastructure code is modularized by resource type (storage, functions, web) and imported in the correct order to establish dependencies. Application code is organized in the `./packages/` directory, separating shared code, function code, and frontend code.
+
+---
+
+#### Example 2: Creating Lambda Functions in a Monorepo
+
+**Task**: Create serverless Lambda functions with proper organization in a monorepo.
+
+**infra/functions.ts**:
+```typescript
+import { StorageResources } from "./storage";
+
+export interface FunctionResources {
+  api: sst.aws.Function;
+  processor: sst.aws.Function;
+}
+
+export async function setupFunctions(storage: StorageResources): Promise<FunctionResources> {
+  // API function with public access
+  const api = new sst.aws.Function("ApiFunction", {
+    handler: "packages/functions/src/api.handler",
+    url: true,
+    timeout: "5 minutes",
+    memory: "1024 MB",
+    link: [storage.bucket],
+  });
+  
+  // Background processor function
+  const processor = new sst.aws.Function("ProcessorFunction", {
+    handler: "packages/functions/src/processor.handler",
+    timeout: "10 minutes",
+    memory: "2048 MB",
+    link: [storage.bucket, storage.table],
+  });
+  
+  return {
+    api,
+    processor
+  };
+}
+```
+
+**packages/functions/src/api.ts**:
+```typescript
+import { Resource } from "sst";
+
+export async function handler(event) {
+  // Access linked resources using the SST SDK
+  console.log("Bucket name:", Resource.DataBucket.name);
+  
+  return {
+    statusCode: 200,
+    body: JSON.stringify({
+      message: "API function executed successfully"
+    })
+  };
+}
+```
+
+**Explanation**: In a monorepo structure, Lambda function infrastructure is defined in `./infra/functions.ts`, which exports a setup function and type interface. The actual function code lives in the `./packages/functions/` directory. This example shows how to create functions with different configurations and link them to resources from other modules. The `setupFunctions` function takes dependencies as parameters, establishing a clear dependency flow between resources.
+
+---
+
+#### Example 3: Storage Resources in a Monorepo
+
+**Task**: Create storage resources (S3 bucket, DynamoDB) in a modular way.
+
+**infra/storage.ts**:
+```typescript
+export interface StorageResources {
+  bucket: sst.aws.Bucket;
+  table: sst.aws.Dynamo;
+}
+
+export async function setupStorage(): Promise<StorageResources> {
+  // Public assets bucket
+  const bucket = new sst.aws.Bucket("DataBucket", {
+    access: "public",
+    cors: {
+      allowHeaders: ["*"],
+      allowMethods: ["GET", "HEAD", "PUT"],
+      allowOrigins: ["*"],
+    },
+  });
+  
+  // User data table
+  const table = new sst.aws.Dynamo("UsersTable", {
+    fields: {
+      userId: "string",
+      email: "string",
+      status: "string",
+    },
+    primaryIndex: { hashKey: "userId" },
+    globalIndexes: {
+      byEmail: { hashKey: "email" }
+    },
+  });
+  
+  // Subscribe to table changes
+  table.subscribe("UserStatusHandler", "packages/functions/src/user-status.handler", {
+    filters: [
+      {
+        dynamodb: {
+          NewImage: {
+            status: {
+              S: ["active"],
+            },
+          },
+        },
+      },
+    ],
+  });
+  
+  return {
+    bucket,
+    table
+  };
+}
+```
+
+**Explanation**: This module encapsulates all storage-related resources in the `./infra/storage.ts` file. It creates an S3 bucket for public assets and a DynamoDB table for user data, with a subscription to table changes. The module exports a typed interface `StorageResources` and a setup function. This approach keeps storage resource definitions together and makes dependencies clear when imported by other infrastructure modules.
+
+---
+
+#### Example 4: Resource Linking in a Monorepo
+
+**Task**: Link resources across different modules in a monorepo.
+
+**infra/index.ts**:
+```typescript
+import { setupStorage } from "./storage";
+import { setupFunctions } from "./functions";
+import { setupWeb } from "./web";
+import { setupApi } from "./api";
+
+export async function run() {
+  // Create resources in the correct dependency order
+  const storage = await setupStorage();
+  const functions = await setupFunctions(storage);
+  const api = await setupApi(functions, storage);
+  const web = await setupWeb(api, storage);
+  
+  return {
+    apiUrl: api.url,
+    webUrl: web.url,
+    bucketName: storage.bucket.name,
+  };
+}
+```
+
+**infra/api.ts**:
+```typescript
+import { StorageResources } from "./storage";
+import { FunctionResources } from "./functions";
+
+export interface ApiResources {
+  url: sst.aws.Output<string>;
+}
+
+export async function setupApi(
+  functions: FunctionResources, 
+  storage: StorageResources
+): Promise<ApiResources> {
+  // Create API Gateway using functions created in functions.ts
+  const api = new sst.aws.Router("Api", {
+    routes: {
+      "GET /users": functions.api,
+      "POST /process": functions.processor,
+    },
+  });
+  
+  return {
+    url: api.url,
+  };
+}
+```
+
+**packages/functions/src/processor.ts**:
+```typescript
+import { Resource } from "sst";
+import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
+
+const s3 = new S3Client({});
+
+export async function handler(event) {
+  // Access the linked bucket using the SST SDK
+  const bucketName = Resource.DataBucket.name;
+  
+  // Process data from the bucket
+  const command = new GetObjectCommand({
+    Bucket: bucketName,
+    Key: "data.json",
+  });
+  
+  try {
+    const response = await s3.send(command);
+    const data = JSON.parse(await response.Body.transformToString());
+    
+    // Process data...
+    
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ success: true }),
+    };
+  } catch (error) {
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: error.message }),
+    };
+  }
+}
+```
+
+**Explanation**: This example shows how resource linking works in a monorepo structure. Resources are created in separate module files and passed as parameters to dependent modules, establishing a clear flow of dependencies. The `setupApi` function takes both functions and storage resources as parameters to configure routes. Lambda functions in `./packages/functions/` can access linked resources using the SST SDK's `Resource` object, providing typesafe access to infrastructure resources.
+
+---
+
+#### Example 5: Shared Code in a Monorepo
+
+**Task**: Create and use shared code between different packages in a monorepo.
+
+**Project Structure**:
+```
+my-sst-app/
+├─ packages/
+│  ├─ core/               # Shared code package
+│  │  ├─ src/
+│  │  │  ├─ types.ts     # Shared types
+│  │  │  ├─ utils.ts     # Shared utilities
+│  │  │  └─ index.ts     # Package entry point
+│  │  └─ package.json
+│  ├─ functions/          # Lambda functions
+│  │  ├─ src/
+│  │  │  ├─ api.ts
+│  │  │  └─ processor.ts
+│  │  └─ package.json
+```
+
+**packages/core/package.json**:
+```json
+{
+  "name": "@my-app/core",
+  "version": "0.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
+```
+
+**packages/core/src/types.ts**:
+```typescript
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  status: 'active' | 'inactive';
+  createdAt: string;
+}
+
+export interface FileMetadata {
+  key: string;
+  contentType: string;
+  size: number;
+  lastModified: string;
+  owner: string;
+}
+
+export interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+```
+
+**packages/core/src/utils.ts**:
+```typescript
+import { Resource } from "sst";
+import { S3Client, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import type { FileMetadata } from "./types";
+
+const s3 = new S3Client({});
+
+// Shared utility for generating pre-signed URLs
+export async function getPresignedGetUrl(key: string): Promise<string> {
+  const command = new GetObjectCommand({
+    Bucket: Resource.DataBucket.name,
+    Key: key,
+  });
+  
+  return getSignedUrl(s3, command, { expiresIn: 3600 });
+}
+
+export async function getPresignedPutUrl(
+  key: string, 
+  contentType: string
+): Promise<string> {
+  const command = new PutObjectCommand({
+    Bucket: Resource.DataBucket.name,
+    Key: key,
+    ContentType: contentType,
+  });
+  
+  return getSignedUrl(s3, command, { expiresIn: 3600 });
+}
+
+export function generateFileMetadata(
+  key: string, 
+  contentType: string, 
+  size: number, 
+  userId: string
+): FileMetadata {
+  return {
+    key,
+    contentType,
+    size,
+    lastModified: new Date().toISOString(),
+    owner: userId,
+  };
+}
+```
+
+**packages/functions/package.json**:
+```json
+{
+  "name": "@my-app/functions",
+  "version": "0.0.0",
+  "dependencies": {
+    "@my-app/core": "*",
+    "zod": "^3.21.4"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.119",
+    "typescript": "^5.0.0"
+  }
+}
+```
+
+**packages/functions/src/api.ts**:
+```typescript
+import { APIGatewayProxyHandlerV2 } from "aws-lambda";
+import { Resource } from "sst";
+import { ApiResponse, FileMetadata } from "@my-app/core";
+import { getPresignedPutUrl, generateFileMetadata } from "@my-app/core";
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
+
+const ddbClient = new DynamoDBClient({});
+const docClient = DynamoDBDocumentClient.from(ddbClient);
+
+export const handler: APIGatewayProxyHandlerV2 = async (event) => {
+  try {
+    // Parse request body
+    const body = JSON.parse(event.body || "{}");
+    const { filename, contentType, size } = body;
+    const userId = event.requestContext.authorizer?.jwt.claims.sub || "anonymous";
+    
+    // Generate unique file key
+    const key = `${userId}/${Date.now()}-${filename}`;
+    
+    // Generate pre-signed URL for file upload
+    const uploadUrl = await getPresignedPutUrl(key, contentType);
+    
+    // Create file metadata
+    const metadata = generateFileMetadata(key, contentType, size, userId);
+    
+    // Store metadata in DynamoDB
+    await docClient.send(new PutCommand({
+      TableName: Resource.FilesTable.name,
+      Item: metadata,
+    }));
+    
+    const response: ApiResponse<{ uploadUrl: string; metadata: FileMetadata }> = {
+      success: true,
+      data: {
+        uploadUrl,
+        metadata,
+      },
+    };
+    
+    return {
+      statusCode: 200,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(response),
+    };
+  } catch (error) {
+    console.error("Error generating upload URL:", error);
+    
+    const response: ApiResponse<never> = {
+      success: false,
+      error: error.message,
+    };
+    
+    return {
+      statusCode: 500,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(response),
+    };
+  }
+};
+```
+
+**Explanation**: This example demonstrates how to create and use shared code in a monorepo. The `@my-app/core` package contains shared types, utilities, and functions that can be imported by other packages. The functions package imports from the core package using the workspace dependency (`"@my-app/core": "*"`). This structure promotes code reuse and keeps the codebase DRY. When linked resources are accessed in utilities, they're available to all functions that import those utilities.
+
+---
+
+#### Example 6: Web Frontend in a Monorepo
+
+**Task**: Set up a Next.js frontend in a monorepo structure with access to backend resources.
+
+**Project Structure**:
+```
+my-sst-app/
+├─ infra/
+│  └─ web.ts         # Frontend infrastructure
+├─ packages/
+│  ├─ web/           # Next.js application
+│  │  ├─ src/
+│  │  │  └─ app/
+│  │  ├─ next.config.js
+│  │  └─ package.json
+```
+
+**infra/web.ts**:
+```typescript
+import { ApiResources } from "./api";
+import { StorageResources } from "./storage";
+
+export interface WebResources {
+  url: sst.aws.Output<string>;
+}
+
+export async function setupWeb(
+  api: ApiResources,
+  storage: StorageResources
+): Promise<WebResources> {
+  // Create Next.js site
+  const site = new sst.aws.Nextjs("Web", {
+    path: "packages/web",
+    link: [storage.bucket, api],
+    domain: process.env.STAGE === "production" 
+      ? {
+          domainName: "myapp.com",
+          hostedZone: "myapp.com",
+        }
+      : undefined,
+    warm: process.env.STAGE === "production" ? 5 : 1,
+    networking: {
+      cdk: {
+        distribution: {
+          // Additional CloudFront configuration
+          comment: "My App Frontend",
+          priceClass: "PriceClass_100",
+        }
+      }
+    }
+  });
+  
+  return {
+    url: site.url,
+  };
+}
+```
+
+**packages/web/package.json**:
+```json
+{
+  "name": "@my-app/web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "sst bind next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@my-app/core": "*",
+    "next": "^13.4.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "sst": "^2.36.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.2.5",
+    "@types/react": "^18.2.8",
+    "typescript": "^5.1.3"
+  }
+}
+```
+
+**packages/web/src/app/api/upload/route.ts**:
+```typescript
+import { NextRequest, NextResponse } from "next/server";
+import { Resource } from "sst";
+
+export async function GET() {
+  // Access the API endpoint using Resource linking
+  const apiEndpoint = Resource.Api.url;
+  
+  return NextResponse.json({
+    apiEndpoint,
+    message: "Access to linked resources from the frontend"
+  });
+}
+```
+
+**packages/web/src/app/uploads/page.tsx**:
+```tsx
+"use client";
+
+import React, { useState } from "react";
+import { Resource } from "sst";
+
+export default function UploadsPage() {
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadUrl, setUploadUrl] = useState("");
+  
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setFile(e.target.files[0]);
+    }
+  };
+  
+  const getUploadUrl = async () => {
+    if (!file) return;
+    
+    setUploading(true);
+    try {
+      // Use the API to get a pre-signed URL
+      const response = await fetch(`${Resource.Api.url}/upload`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          filename: file.name,
+          contentType: file.type,
+          size: file.size,
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setUploadUrl(data.data.uploadUrl);
+        await uploadToS3(data.data.uploadUrl);
+      }
+    } catch (error) {
+      console.error("Error getting upload URL:", error);
+    } finally {
+      setUploading(false);
+    }
+  };
+  
+  const uploadToS3 = async (url: string) => {
+    if (!file) return;
+    
+    try {
+      await fetch(url, {
+        method: "PUT",
+        body: file,
+        headers: {
+          "Content-Type": file.type,
+        },
+      });
+      
+      alert("File uploaded successfully!");
+    } catch (error) {
+      console.error("Error uploading file:", error);
+    }
+  };
+  
+  return (
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-4">File Upload</h1>
+      <div className="mb-4">
+        <input 
+          type="file" 
+          onChange={handleFileChange}
+          className="border p-2 rounded"
+        />
+      </div>
+      {file && (
+        <button
+          onClick={getUploadUrl}
+          disabled={uploading}
+          className="bg-blue-500 text-white px-4 py-2 rounded disabled:bg-gray-400"
+        >
+          {uploading ? "Uploading..." : "Upload File"}
+        </button>
+      )}
+    </div>
+  );
+}
+```
+
+**Explanation**: This example demonstrates how to set up a Next.js frontend in a monorepo structure. The infrastructure code in `./infra/web.ts` defines the Next.js site with production and development configurations. The frontend code in `./packages/web/` includes a server route and client page that access linked resources using the SST SDK. Note the `sst bind next dev` script in package.json, which ensures the development server has access to linked resources.
+
+---
+
+#### Example 7: Authentication Setup in a Monorepo
+
+**Task**: Set up authentication using Cognito in a monorepo.
+
+**infra/auth.ts**:
+```typescript
+export interface AuthResources {
+  auth: sst.aws.Auth;
+  userPool: sst.aws.Output<string>;
+  userPoolClientId: sst.aws.Output<string>;
+}
+
+export async function setupAuth(): Promise<AuthResources> {
+  // Set up authentication
+  const auth = new sst.aws.Auth("Auth", {
+    login: ["email", "phone"],
+    triggers: {
+      preSignUp: "packages/functions/src/auth/pre-signup.handler",
+      postConfirmation: "packages/functions/src/auth/post-confirmation.handler",
+    },
+    cdk: {
+      userPool: {
+        selfSignUpEnabled: true,
+        autoVerify: { email: true, phone: true },
+        passwordPolicy: {
+          minLength: 8,
+          requireLowercase: true,
+          requireUppercase: true,
+          requireDigits: true,
+          requireSymbols: false,
+        },
+      },
+    },
+  });
+  
+  return {
+    auth,
+    userPool: auth.userPoolId,
+    userPoolClientId: auth.userPoolClientId,
+  };
+}
+```
+
+**packages/functions/src/auth/pre-signup.ts**:
+```typescript
+import { PreSignUpTriggerHandler } from "aws-lambda";
+
+export const handler: PreSignUpTriggerHandler = async (event) => {
+  // Auto-confirm users for testing in development environments
+  if (process.env.STAGE !== "production") {
+    event.response.autoConfirmUser = true;
+    
+    // Auto-verify email and phone if provided
+    if (event.request.userAttributes.email) {
+      event.response.autoVerifyEmail = true;
+    }
+    
+    if (event.request.userAttributes.phone_number) {
+      event.response.autoVerifyPhone = true;
+    }
+  }
+  
+  // Additional custom validation logic could go here
+  
+  return event;
+};
+```
+
+**packages/functions/src/auth/post-confirmation.ts**:
+```typescript
+import { PostConfirmationTriggerHandler } from "aws-lambda";
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
+import { Resource } from "sst";
+
+const ddbClient = new DynamoDBClient({});
+const docClient = DynamoDBDocumentClient.from(ddbClient);
+
+export const handler: PostConfirmationTriggerHandler = async (event) => {
+  try {
+    // After user confirms their account, create a record in Users table
+    if (event.triggerSource === "PostConfirmation_ConfirmSignUp") {
+      const { sub, email, phone_number } = event.request.userAttributes;
+      
+      await docClient.send(new PutCommand({
+        TableName: Resource.UsersTable.name,
+        Item: {
+          userId: sub,
+          email: email || null,
+          phone: phone_number || null,
+          status: "active",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      }));
+      
+      console.log(`Created user record for ${sub}`);
+    }
+    
+    return event;
+  } catch (error) {
+    console.error("Error creating user record:", error);
+    // Don't fail the confirmation flow on error, just log it
+    return event;
+  }
+};
+```
+
+**infra/index.ts** (updated to include auth):
+```typescript
+import { setupStorage } from "./storage";
+import { setupAuth } from "./auth";
+import { setupFunctions } from "./functions";
+import { setupApi } from "./api";
+import { setupWeb } from "./web";
+
+export async function run() {
+  const storage = await setupStorage();
+  const auth = await setupAuth();
+  const functions = await setupFunctions(storage);
+  const api = await setupApi(functions, storage, auth);
+  const web = await setupWeb(api, storage, auth);
+  
+  return {
+    apiUrl: api.url,
+    webUrl: web.url,
+    userPoolId: auth.userPool,
+    userPoolClientId: auth.userPoolClientId,
+  };
+}
+```
+
+**packages/web/src/app/auth-config.ts**:
+```typescript
+import { Resource } from "sst";
+
+export const authConfig = {
+  region: "us-east-1",
+  userPoolId: Resource.Auth.userPoolId,
+  userPoolWebClientId: Resource.Auth.userPoolClientId,
+  authenticationFlowType: "USER_SRP_AUTH",
+};
+```
+
+**Explanation**: This example demonstrates how to set up authentication in a monorepo using Amazon Cognito. The `setupAuth` function in `./infra/auth.ts` creates an Auth component with Cognito triggers for pre-signup and post-confirmation. The trigger functions are implemented in the `./packages/functions/src/auth/` directory. The authentication resources are then passed to other infrastructure modules like API and web. The frontend can access the authentication configuration using the SST SDK's Resource object.
+
+---
+
+#### Example 8: Database in a Monorepo with migrations
+
+**Task**: Set up a PostgreSQL database with migrations in a monorepo.
+
+**infra/database.ts**:
+```typescript
+import { StorageResources } from "./storage";
+
+export interface DatabaseResources {
+  postgres: sst.aws.Postgres;
+  endpoint: sst.aws.Output<string>;
+  secretArn: sst.aws.Output<string>;
+}
+
+export async function setupDatabase(
+  storage: StorageResources
+): Promise<DatabaseResources> {
+  // Create VPC
+  const vpc = new sst.aws.Vpc("AppNetwork", {
+    bastion: true, // Include a bastion host for remote access
+  });
+  
+  // Create PostgreSQL database
+  const postgres = new sst.aws.Postgres("Database", {
+    vpc,
+    scaling: {
+      minCapacity: "1 ACU",
+      maxCapacity: "4 ACU",
+    },
+    migrations: {
+      path: "packages/core/migrations",
+    },
+    defaultDatabaseName: "myapp",
+  });
+  
+  // Create a function to run database migrations
+  const migrationFunction = new sst.aws.Function("MigrationRunner", {
+    handler: "packages/functions/src/db/run-migrations.handler",
+    link: [postgres],
+    nodejs: {
+      install: ["pg", "node-pg-migrate"],
+    },
+    timeout: "5 minutes",
+    environment: {
+      MIGRATIONS_PATH: "migrations",
+    },
+  });
+  
+  // Create a bucket event notification to trigger migrations on file changes
+  storage.schemasBucket.notify("MigrationTrigger", {
+    function: migrationFunction,
+    events: ["object_created", "object_removed"],
+    filters: [{ prefix: "migrations/" }],
+  });
+  
+  return {
+    postgres,
+    endpoint: postgres.endpoint,
+    secretArn: postgres.secretArn,
+  };
+}
+```
+
+**packages/core/migrations/1689123456789_create_users_table.js**:
+```javascript
+/* eslint-disable camelcase */
+
+exports.shorthands = undefined;
+
+exports.up = pgm => {
+  pgm.createTable('users', {
+    id: { type: 'uuid', primaryKey: true, default: pgm.func('gen_random_uuid()') },
+    email: { type: 'varchar(255)', notNull: true, unique: true },
+    name: { type: 'varchar(255)', notNull: true },
+    password_hash: { type: 'varchar(255)', notNull: true },
+    status: { 
+      type: 'varchar(20)', 
+      notNull: true, 
+      default: 'pending',
+      check: "status IN ('pending', 'active', 'inactive', 'banned')" 
+    },
+    created_at: { type: 'timestamp', notNull: true, default: pgm.func('current_timestamp') },
+    updated_at: { type: 'timestamp', notNull: true, default: pgm.func('current_timestamp') },
+  });
+  
+  pgm.createIndex('users', 'email');
+};
+
+exports.down = pgm => {
+  pgm.dropTable('users');
+};
+```
+
+**packages/core/migrations/1689123456790_create_profiles_table.js**:
+```javascript
+/* eslint-disable camelcase */
+
+exports.shorthands = undefined;
+
+exports.up = pgm => {
+  pgm.createTable('profiles', {
+    user_id: { 
+      type: 'uuid', 
+      primaryKey: true, 
+      references: { table: 'users', column: 'id' },
+      onDelete: 'CASCADE' 
+    },
+    bio: { type: 'text' },
+    avatar_url: { type: 'varchar(255)' },
+    website: { type: 'varchar(255)' },
+    location: { type: 'varchar(255)' },
+    created_at: { type: 'timestamp', notNull: true, default: pgm.func('current_timestamp') },
+    updated_at: { type: 'timestamp', notNull: true, default: pgm.func('current_timestamp') },
+  });
+};
+
+exports.down = pgm => {
+  pgm.dropTable('profiles');
+};
+```
+
+**packages/functions/src/db/run-migrations.ts**:
+```typescript
+import { S3Event } from "aws-lambda";
+import { Resource } from "sst";
+import path from "path";
+import fs from "fs";
+import os from "os";
+import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
+import { exec } from "child_process";
+import { promisify } from "util";
+
+const execAsync = promisify(exec);
+const s3 = new S3Client({});
+
+export async function handler(event: S3Event) {
+  console.log("Migration event triggered:", JSON.stringify(event, null, 2));
+  
+  try {
+    // Create temp directory for migrations
+    const tempDir = path.join(os.tmpdir(), 'migrations-' + Date.now());
+    fs.mkdirSync(tempDir, { recursive: true });
+    
+    // Download migration files from S3
+    for (const record of event.Records) {
+      const bucketName = record.s3.bucket.name;
+      const key = decodeURIComponent(record.s3.object.key.replace(/\+/g, ' '));
+      
+      if (key.endsWith('.js') && key.startsWith('migrations/')) {
+        const fileName = path.basename(key);
+        const filePath = path.join(tempDir, fileName);
+        
+        const command = new GetObjectCommand({
+          Bucket: bucketName,
+          Key: key,
+        });
+        
+        const response = await s3.send(command);
+        const fileContent = await response.Body.transformToString();
+        fs.writeFileSync(filePath, fileContent);
+        
+        console.log(`Downloaded migration file: ${fileName}`);
+      }
+    }
+    
+    // Run migrations using node-pg-migrate
+    const dbUrl = `postgres://${Resource.Database.username}:${Resource.Database.password}@${Resource.Database.endpoint}/${Resource.Database.database}`;
+    
+    const { stdout, stderr } = await execAsync(
+      `npx node-pg-migrate up --migration-file-language js --migrations-dir ${tempDir}`,
+      {
+        env: {
+          ...process.env,
+          DATABASE_URL: dbUrl,
+        },
+      }
+    );
+    
+    console.log('Migration stdout:', stdout);
+    
+    if (stderr) {
+      console.error('Migration stderr:', stderr);
+    }
+    
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ message: 'Migrations completed successfully' }),
+    };
+  } catch (error) {
+    console.error('Error running migrations:', error);
+    throw error;
+  }
+}
+```
+
+**packages/core/src/db.ts**:
+```typescript
+import { Resource } from "sst";
+import { Pool } from "pg";
+
+let pool: Pool;
+
+export function getDbPool() {
+  if (!pool) {
+    pool = new Pool({
+      host: Resource.Database.endpoint.split(':')[0],
+      port: parseInt(Resource.Database.endpoint.split(':')[1] || "5432"),
+      database: Resource.Database.database,
+      user: Resource.Database.username,
+      password: Resource.Database.password,
+      ssl: process.env.STAGE === "production",
+      max: 20,
+      idleTimeoutMillis: 30000,
+    });
+  }
+  
+  return pool;
+}
+
+export async function query<T = any>(text: string, params?: any[]): Promise<T[]> {
+  const client = await getDbPool().connect();
+  try {
+    const result = await client.query(text, params);
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
+export async function transaction<T>(callback: (client: any) => Promise<T>): Promise<T> {
+  const client = await getDbPool().connect();
+  try {
+    await client.query('BEGIN');
+    
+    const result = await callback(client);
+    
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+```
+
+**Explanation**: This example demonstrates how to set up a PostgreSQL database with migrations in a monorepo. The infrastructure code in `./infra/database.ts` creates a VPC, a PostgreSQL database with migrations, and a function to run those migrations. The migrations are stored in `./packages/core/migrations/` and follow the node-pg-migrate format. The database connection utilities are implemented in the core package, making them available to other packages that need database access. This structure keeps database-related code organized and maintains clear dependencies between resources.
+
+---
+
+#### Example 9: Event-Driven Architecture in a Monorepo
+
+**Task**: Implement a queue-based event system with producers and consumers in a monorepo.
+
+**infra/queues.ts**:
+```typescript
+import { StorageResources } from "./storage";
+
+export interface QueueResources {
+  orderQueue: sst.aws.Queue;
+  paymentQueue: sst.aws.Queue;
+  dlq: sst.aws.Queue;
+}
+
+export async function setupQueues(storage: StorageResources): Promise<QueueResources> {
+  // Dead-letter queue for failed messages
+  const dlq = new sst.aws.Queue("DeadLetterQueue");
+  
+  // Order processing queue
+  const orderQueue = new sst.aws.Queue("OrderQueue", {
+    fifo: true,  // First-in, first-out queue
+    consumer: {
+      function: "packages/functions/src/consumers/process-order.handler",
+      cdk: {
+        eventSource: {
+          batchSize: 10,
+          maxBatchingWindow: "1 minute",
+          reportBatchItemFailures: true,  // Enable partial batch failures
+        },
+      },
+    },
+    deadLetterQueue: dlq,
+  });
+  
+  // Payment processing queue
+  const paymentQueue = new sst.aws.Queue("PaymentQueue", {
+    consumer: {
+      function: "packages/functions/src/consumers/process-payment.handler",
+    },
+    deadLetterQueue: dlq,
+  });
+  
+  // Create notification handlers for successful and failed processing
+  dlq.subscribe("FailedOrderHandler", "packages/functions/src/consumers/failed-order.handler");
+  
+  // Subscribe to storage events and publish to queues
+  storage.bucket.notify("NewOrderTrigger", {
+    function: {
+      handler: "packages/functions/src/producers/order-file-processor.handler",
+      link: [orderQueue],
+    },
+    events: ["object_created"],
+    filters: [{ prefix: "orders/" }],
+  });
+  
+  return {
+    orderQueue,
+    paymentQueue,
+    dlq,
+  };
+}
+```
+
+**packages/core/src/events/order-events.ts**:
+```typescript
+export interface OrderCreatedEvent {
+  eventType: "ORDER_CREATED";
+  orderId: string;
+  userId: string;
+  products: {
+    productId: string;
+    quantity: number;
+    price: number;
+  }[];
+  totalAmount: number;
+  shippingAddress: {
+    name: string;
+    street: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    country: string;
+  };
+  timestamp: string;
+}
+
+export interface OrderProcessedEvent {
+  eventType: "ORDER_PROCESSED";
+  orderId: string;
+  status: "PROCESSED";
+  processedAt: string;
+}
+
+export interface PaymentRequestedEvent {
+  eventType: "PAYMENT_REQUESTED";
+  orderId: string;
+  userId: string;
+  amount: number;
+  paymentMethodId?: string;
+  timestamp: string;
+}
+
+export type OrderEvent = OrderCreatedEvent | OrderProcessedEvent | PaymentRequestedEvent;
+```
+
+**packages/functions/src/producers/order-file-processor.ts**:
+```typescript
+import { S3Event } from "aws-lambda";
+import { Resource } from "sst";
+import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
+import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
+import { OrderCreatedEvent } from "@my-app/core/src/events/order-events";
+
+const s3 = new S3Client({});
+const sqs = new SQSClient({});
+
+export async function handler(event: S3Event) {
+  for (const record of event.Records) {
+    try {
+      const bucket = record.s3.bucket.name;
+      const key = decodeURIComponent(record.s3.object.key.replace(/\+/g, ' '));
+      
+      console.log(`Processing new order file: ${key}`);
+      
+      // Get the order file from S3
+      const command = new GetObjectCommand({
+        Bucket: bucket,
+        Key: key,
+      });
+      
+      const response = await s3.send(command);
+      const orderData = await response.Body.transformToString();
+      const order = JSON.parse(orderData);
+      
+      // Create an order event
+      const orderEvent: OrderCreatedEvent = {
+        eventType: "ORDER_CREATED",
+        orderId: order.id,
+        userId: order.userId,
+        products: order.items.map(item => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          price: item.price,
+        })),
+        totalAmount: order.totalAmount,
+        shippingAddress: order.shippingAddress,
+        timestamp: new Date().toISOString(),
+      };
+      
+      // Send to the order queue
+      await sqs.send(new SendMessageCommand({
+        QueueUrl: Resource.OrderQueue.url,
+        MessageBody: JSON.stringify(orderEvent),
+        MessageGroupId: order.userId, // Group by user ID for FIFO queue
+        MessageDeduplicationId: `order-${order.id}-${Date.now()}`, // Unique deduplication ID
+      }));
+      
+      console.log(`Order event sent to queue for order ${order.id}`);
+    } catch (error) {
+      console.error("Error processing order file:", error);
+      throw error;
+    }
+  }
+}
+```
+
+**packages/functions/src/consumers/process-order.ts**:
+```typescript
+import { SQSEvent, SQSBatchResponse } from "aws-lambda";
+import { Resource } from "sst";
+import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
+import { 
+  OrderCreatedEvent, 
+  OrderProcessedEvent,
+  PaymentRequestedEvent 
+} from "@my-app/core/src/events/order-events";
+
+const sqs = new SQSClient({});
+const ddbClient = new DynamoDBClient({});
+const docClient = DynamoDBDocumentClient.from(ddbClient);
+
+export async function handler(event: SQSEvent): Promise<SQSBatchResponse> {
+  const batchItemFailures: { itemIdentifier: string }[] = [];
+  
+  for (const record of event.Records) {
+    try {
+      const body = JSON.parse(record.body) as OrderCreatedEvent;
+      
+      if (body.eventType !== "ORDER_CREATED") {
+        console.log(`Skipping non-ORDER_CREATED event: ${body.eventType}`);
+        continue;
+      }
+      
+      // Store order in database
+      await docClient.send(new PutCommand({
+        TableName: Resource.OrdersTable.name,
+        Item: {
+          orderId: body.orderId,
+          userId: body.userId,
+          products: body.products,
+          totalAmount: body.totalAmount,
+          shippingAddress: body.shippingAddress,
+          status: "PROCESSING",
+          createdAt: body.timestamp,
+          updatedAt: new Date().toISOString(),
+        },
+      }));
+      
+      // Generate a payment request event
+      const paymentEvent: PaymentRequestedEvent = {
+        eventType: "PAYMENT_REQUESTED",
+        orderId: body.orderId,
+        userId: body.userId,
+        amount: body.totalAmount,
+        timestamp: new Date().toISOString(),
+      };
+      
+      // Send to payment queue
+      await sqs.send(new SendMessageCommand({
+        QueueUrl: Resource.PaymentQueue.url,
+        MessageBody: JSON.stringify(paymentEvent),
+      }));
+      
+      // Mark the order as processed
+      const processedEvent: OrderProcessedEvent = {
+        eventType: "ORDER_PROCESSED",
+        orderId: body.orderId,
+        status: "PROCESSED",
+        processedAt: new Date().toISOString(),
+      };
+      
+      console.log(`Order ${body.orderId} processed successfully`);
+    } catch (error) {
+      console.error(`Error processing order from record ${record.messageId}:`, error);
+      batchItemFailures.push({ itemIdentifier: record.messageId });
+    }
+  }
+  
+  return { batchItemFailures };
+}
+```
+
+**Explanation**: This example demonstrates how to implement an event-driven architecture in a monorepo using SQS queues. The infrastructure code in `./infra/queues.ts` sets up multiple queues with different configurations, including a FIFO queue for orders, a standard queue for payments, and a dead-letter queue for failed messages. Event types are defined in the core package, making them available to all services. The producer and consumer functions are organized in separate directories with appropriate naming. The example shows how to configure batch processing, handle partial failures, and chain events together to build a complete workflow.
+
+---
+
+#### Example 10: API Gateway in a Monorepo
+
+**Task**: Create an API Gateway with RESTful endpoints and route organization in a monorepo.
+
+**infra/api.ts**:
+```typescript
+import { StorageResources } from "./storage";
+import { AuthResources } from "./auth";
+import { QueueResources } from "./queues";
+
+export interface ApiResources {
+  api: sst.aws.Router;
+  url: sst.aws.Output<string>;
+}
+
+export async function setupApi(
+  storage: StorageResources,
+  auth: AuthResources,
+  queues: QueueResources
+): Promise<ApiResources> {
+  // Import route modules
+  const userRoutes = await import("./routes/users");
+  const productRoutes = await import("./routes/products");
+  const orderRoutes = await import("./routes/orders");
+  
+  // Create the API Gateway
+  const api = new sst.aws.Router("Api", {
+    routes: {
+      // User routes
+      ...userRoutes.createRoutes(auth),
+      
+      // Product routes
+      ...productRoutes.createRoutes(storage),
+      
+      // Order routes
+      ...orderRoutes.createRoutes(storage, queues),
+    },
+    cors: {
+      allowHeaders: ["*"],
+      allowMethods: ["ANY"],
+      allowOrigins: ["*"],
+    },
+    domain: process.env.STAGE === "production" 
+      ? {
+          domainName: "api.myapp.com",
+          hostedZone: "myapp.com",
+        }
+      : undefined,
+    customDomain: {
+      path: "v1",  // Base path for API versioning
+    },
+    cdk: {
+      restApi: {
+        description: "My App API Gateway",
+        // Additional API Gateway configuration
+        defaultMethodOptions: {
+          authorizationType: "NONE", // Default to no auth, override in routes
+        },
+      }
+    }
+  });
+  
+  return {
+    api,
+    url: api.url,
+  };
+}
+```
+
+**infra/routes/users.ts**:
+```typescript
+import { AuthResources } from "../auth";
+
+export function createRoutes(auth: AuthResources) {
+  // Create user functions
+  const getUsersFunction = new sst.aws.Function("GetUsers", {
+    handler: "packages/functions/src/api/users/get-users.handler",
+    link: [auth.auth],
+  });
+  
+  const getUserFunction = new sst.aws.Function("GetUser", {
+    handler: "packages/functions/src/api/users/get-user.handler",
+    link: [auth.auth],
+  });
+  
+  const createUserFunction = new sst.aws.Function("CreateUser", {
+    handler: "packages/functions/src/api/users/create-user.handler",
+    link: [auth.auth],
+  });
+  
+  const updateUserFunction = new sst.aws.Function("UpdateUser", {
+    handler: "packages/functions/src/api/users/update-user.handler",
+    link: [auth.auth],
+  });
+  
+  const deleteUserFunction = new sst.aws.Function("DeleteUser", {
+    handler: "packages/functions/src/api/users/delete-user.handler",
+    link: [auth.auth],
+  });
+  
+  // Return route configuration
+  return {
+    "GET /users": {
+      function: getUsersFunction,
+      authorizer: "jwt",
+    },
+    "GET /users/{id}": {
+      function: getUserFunction,
+      authorizer: "jwt",
+    },
+    "POST /users": {
+      function: createUserFunction,
+      authorizer: "jwt",
+    },
+    "PUT /users/{id}": {
+      function: updateUserFunction,
+      authorizer: "jwt",
+    },
+    "DELETE /users/{id}": {
+      function: deleteUserFunction,
+      authorizer: "jwt",
+    },
+  };
+}
+```
+
+**infra/routes/products.ts**:
+```typescript
+import { StorageResources } from "../storage";
+
+export function createRoutes(storage: StorageResources) {
+  // Create product functions
+  const getProductsFunction = new sst.aws.Function("GetProducts", {
+    handler: "packages/functions/src/api/products/get-products.handler",
+    link: [storage.table],
+  });
+  
+  const getProductFunction = new sst.aws.Function("GetProduct", {
+    handler: "packages/functions/src/api/products/get-product.handler",
+    link: [storage.table],
+  });
+  
+  const createProductFunction = new sst.aws.Function("CreateProduct", {
+    handler: "packages/functions/src/api/products/create-product.handler",
+    link: [storage.table, storage.bucket],
+  });
+  
+  const updateProductFunction = new sst.aws.Function("UpdateProduct", {
+    handler: "packages/functions/src/api/products/update-product.handler",
+    link: [storage.table, storage.bucket],
+  });
+  
+  const deleteProductFunction = new sst.aws.Function("DeleteProduct", {
+    handler: "packages/functions/src/api/products/delete-product.handler",
+    link: [storage.table, storage.bucket],
+  });
+  
+  // Return route configuration
+  return {
+    "GET /products": getProductsFunction,
+    "GET /products/{id}": getProductFunction,
+    "POST /products": {
+      function: createProductFunction,
+      authorizer: "jwt",
+    },
+    "PUT /products/{id}": {
+      function: updateProductFunction,
+      authorizer: "jwt",
+    },
+    "DELETE /products/{id}": {
+      function: deleteProductFunction,
+      authorizer: "jwt",
+    },
+  };
+}
+```
+
+**infra/routes/orders.ts**:
+```typescript
+import { StorageResources } from "../storage";
+import { QueueResources } from "../queues";
+
+export function createRoutes(storage: StorageResources, queues: QueueResources) {
+  // Create order functions
+  const getOrdersFunction = new sst.aws.Function("GetOrders", {
+    handler: "packages/functions/src/api/orders/get-orders.handler",
+    link: [storage.table],
+  });
+  
+  const getOrderFunction = new sst.aws.Function("GetOrder", {
+    handler: "packages/functions/src/api/orders/get-order.handler",
+    link: [storage.table],
+  });
+  
+  const createOrderFunction = new sst.aws.Function("CreateOrder", {
+    handler: "packages/functions/src/api/orders/create-order.handler",
+    link: [storage.table, queues.orderQueue],
+  });
+  
+  // Return route configuration
+  return {
+    "GET /orders": {
+      function: getOrdersFunction,
+      authorizer: "jwt",
+    },
+    "GET /orders/{id}": {
+      function: getOrderFunction,
+      authorizer: "jwt",
+    },
+    "POST /orders": {
+      function: createOrderFunction,
+      authorizer: "jwt",
+    },
+  };
+}
+```
+
+**packages/functions/src/api/products/get-products.ts**:
+```typescript
+import { APIGatewayProxyHandlerV2 } from "aws-lambda";
+import { Resource } from "sst";
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { DynamoDBDocumentClient, ScanCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
+
+const ddbClient = new DynamoDBClient({});
+const docClient = DynamoDBDocumentClient.from(ddbClient);
+
+export const handler: APIGatewayProxyHandlerV2 = async (event) => {
+  try {
+    const { category } = event.queryStringParameters || {};
+    let products;
+    
+    if (category) {
+      // Query by category using GSI
+      const result = await docClient.send(new QueryCommand({
+        TableName: Resource.ProductsTable.name,
+        IndexName: "byCategoryAndCreatedAt",
+        KeyConditionExpression: "category = :category",
+        ExpressionAttributeValues: {
+          ":category": category,
+        },
+      }));
+      
+      products = result.Items;
+    } else {
+      // Get all products
+      const result = await docClient.send(new ScanCommand({
+        TableName: Resource.ProductsTable.name,
+        Limit: 100,
+      }));
+      
+      products = result.Items;
+    }
+    
+    return {
+      statusCode: 200,
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        products,
+      }),
+    };
+  } catch (error) {
+    console.error("Error getting products:", error);
+    
+    return {
+      statusCode: 500,
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        message: "Error getting products",
+        error: error.message,
+      }),
+    };
+  }
+};
+```
+
+**Explanation**: This example demonstrates how to create an API Gateway with RESTful endpoints in a monorepo. The infrastructure code in `./infra/api.ts` sets up the API Gateway with CORS, custom domain, and other configurations. Routes are organized by resource type in separate files within the `./infra/routes/` directory, making the code more modular and maintainable. Each route file exports a function that creates the necessary Lambda functions and returns the route configuration. The Lambda function implementations are organized in the `./packages/functions/src/api/` directory with a similar structure, making it easy to find the code for each endpoint.
+
+---
+
+#### Example 11: Scheduled Jobs in a Monorepo
+
+**Task**: Create scheduled jobs and background tasks in a monorepo structure.
+
+**infra/schedules.ts**:
+```typescript
+import { StorageResources } from "./storage";
+import { DatabaseResources } from "./database";
+
+export interface ScheduleResources {
+  dailyReportJob: sst.aws.Cron;
+  weeklyReportJob: sst.aws.Cron;
+  monthlyReportJob: sst.aws.Cron;
+}
+
+export async function setupSchedules(
+  storage: StorageResources,
+  database: DatabaseResources
+): Promise<ScheduleResources> {
+  // Daily report generator - runs at 1 AM UTC daily
+  const dailyReportJob = new sst.aws.Cron("DailyReport", {
+    schedule: "cron(0 1 * * ? *)",
+    job: "packages/functions/src/jobs/daily-report.handler",
+    link: [storage.reportsBucket, database.postgres],
+    timeout: "15 minutes",
+    memory: "1024 MB",
+    environment: {
+      REPORT_TYPE: "daily",
+    },
+  });
+  
+  // Weekly report generator - runs at 2 AM UTC every Monday
+  const weeklyReportJob = new sst.aws.Cron("WeeklyReport", {
+    schedule: "cron(0 2 ? * MON *)",
+    job: "packages/functions/src/jobs/weekly-report.handler",
+    link: [storage.reportsBucket, database.postgres],
+    timeout: "30 minutes",
+    memory: "2048 MB",
+    environment: {
+      REPORT_TYPE: "weekly",
+    },
+  });
+  
+  // Monthly report generator - runs at 3 AM UTC on the 1st of each month
+  const monthlyReportJob = new sst.aws.Cron("MonthlyReport", {
+    schedule: "cron(0 3 1 * ? *)",
+    job: "packages/functions/src/jobs/monthly-report.handler",
+    link: [storage.reportsBucket, database.postgres],
+    timeout: "60 minutes",
+    memory: "3072 MB",
+    environment: {
+      REPORT_TYPE: "monthly",
+    },
+  });
+  
+  // Data cleanup task - runs at midnight UTC every day
+  new sst.aws.Cron("DataCleanup", {
+    schedule: "cron(0 0 * * ? *)",
+    job: "packages/functions/src/jobs/data-cleanup.handler",
+    link: [storage.bucket, database.postgres],
+    environment: {
+      RETENTION_DAYS: "90",
+    },
+  });
+  
+  return {
+    dailyReportJob,
+    weeklyReportJob,
+    monthlyReportJob,
+  };
+}
+```
+
+**packages/core/src/reports/report-generator.ts**:
+```typescript
+import { Resource } from "sst";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { format } from "date-fns";
+import { getDbPool } from "../db";
+
+const s3 = new S3Client({});
+
+export interface ReportConfig {
+  type: "daily" | "weekly" | "monthly";
+  startDate: Date;
+  endDate: Date;
+  format: "csv" | "json" | "pdf";
+}
+
+export async function generateReport(config: ReportConfig): Promise<string> {
+  console.log(`Generating ${config.type} report from ${config.startDate.toISOString()} to ${config.endDate.toISOString()}`);
+  
+  // Query data from database based on report type and date range
+  const pool = getDbPool();
+  const data = await pool.query(`
+    SELECT * FROM orders
+    WHERE created_at BETWEEN $1 AND $2
+    ORDER BY created_at DESC
+  `, [config.startDate.toISOString(), config.endDate.toISOString()]);
+  
+  // Process and format the data based on report type
+  let formattedData: string;
+  
+  if (config.format === "json") {
+    formattedData = JSON.stringify(data.rows, null, 2);
+  } else if (config.format === "csv") {
+    formattedData = convertToCSV(data.rows);
+  } else {
+    throw new Error(`Unsupported format: ${config.format}`);
+  }
+  
+  // Generate a unique filename
+  const timestamp = format(new Date(), "yyyyMMdd-HHmmss");
+  const filename = `${config.type}-report-${timestamp}.${config.format}`;
+  
+  // Upload to S3
+  await s3.send(new PutObjectCommand({
+    Bucket: Resource.ReportsBucket.name,
+    Key: `reports/${config.type}/${filename}`,
+    Body: formattedData,
+    ContentType: config.format === "json" 
+      ? "application/json" 
+      : "text/csv",
+  }));
+  
+  return filename;
+}
+
+function convertToCSV(data: any[]): string {
+  if (data.length === 0) return "";
+  
+  // Get headers from first row
+  const headers = Object.keys(data[0]);
+  
+  // Create CSV header row
+  const csvRows = [headers.join(",")];
+  
+  // Add data rows
+  for (const row of data) {
+    const values = headers.map(header => {
+      const value = row[header];
+      return typeof value === "string" 
+        ? `"${value.replace(/"/g, '""')}"` 
+        : value;
+    });
+    csvRows.push(values.join(","));
+  }
+  
+  return csvRows.join("\n");
+}
+```
+
+**packages/functions/src/jobs/daily-report.ts**:
+```typescript
+import { ScheduledHandler } from "aws-lambda";
+import { subDays, startOfDay, endOfDay } from "date-fns";
+import { generateReport } from "@my-app/core/src/reports/report-generator";
+import { sendReportNotification } from "@my-app/core/src/notifications/email";
+
+export const handler: ScheduledHandler = async () => {
+  try {
+    const today = new Date();
+    const yesterday = subDays(today, 1);
+    
+    const startDate = startOfDay(yesterday);
+    const endDate = endOfDay(yesterday);
+    
+    // Generate daily report
+    const reportFilename = await generateReport({
+      type: "daily",
+      startDate,
+      endDate,
+      format: "csv",
+    });
+    
+    // Send notification
+    await sendReportNotification({
+      reportType: "daily",
+      reportDate: yesterday,
+      reportFilename,
+      recipients: ["reports@example.com"],
+    });
+    
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        message: "Daily report generated successfully",
+        filename: reportFilename,
+      }),
+    };
+  } catch (error) {
+    console.error("Error generating daily report:", error);
+    throw error;
+  }
+};
+```
+
+**infra/index.ts** (updated):
+```typescript
+import { setupStorage } from "./storage";
+import { setupDatabase } from "./database";
+import { setupFunctions } from "./functions";
+import { setupQueues } from "./queues";
+import { setupApi } from "./api";
+import { setupSchedules } from "./schedules";
+import { setupWeb } from "./web";
+
+export async function run() {
+  // Create resources in the correct dependency order
+  const storage = await setupStorage();
+  const database = await setupDatabase(storage);
+  const functions = await setupFunctions(storage, database);
+  const queues = await setupQueues(storage);
+  const api = await setupApi(functions, storage, database, queues);
+  const schedules = await setupSchedules(storage, database);
+  const web = await setupWeb(api, storage);
+  
+  return {
+    apiUrl: api.url,
+    webUrl: web.url,
+    databaseEndpoint: database.endpoint,
+  };
+}
+```
+
+**Explanation**: This example demonstrates how to set up scheduled jobs in a monorepo. The infrastructure code in `./infra/schedules.ts` creates various cron jobs with different schedules, resource links, and configuration options. The core package includes shared code for report generation, which is used by the job handler functions in the functions package. This structure promotes code reuse and maintainability. The `setupSchedules` function is integrated into the main infrastructure setup in `./infra/index.ts` with the appropriate dependencies.
+
+---
+
+#### Example 12: Resource Transformation in a Monorepo
+
+**Task**: Apply transformations to component resources in a monorepo setup.
+
+**infra/transformations.ts**:
+```typescript
+export function applyGlobalTransformations() {
+  // Set defaults for all functions
+  $transform(sst.aws.Function, (args, opts) => {
+    // Set default runtime if not specified
+    args.runtime ??= "nodejs18.x";
+    
+    // Set default memory if not specified
+    args.memory ??= "256 MB";
+    
+    // Add default tags
+    args.tags = {
+      ...(args.tags || {}),
+      ManagedBy: "SST",
+      Environment: process.env.STAGE || "dev",
+    };
+    
+    // Add default tracing
+    args.tracing ??= "active";
+  });
+  
+  // Set defaults for all buckets
+  $transform(sst.aws.Bucket, (args, opts) => {
+    // Enforce encryption by default
+    args.cdk = {
+      ...(args.cdk || {}),
+      bucket: {
+        ...(args.cdk?.bucket || {}),
+        encryption: "AES256",
+        blockPublicAccess: {
+          blockPublicAcls: true,
+          blockPublicPolicy: true,
+          ignorePublicAcls: true,
+          restrictPublicBuckets: true,
+        },
+      },
+    };
+  });
+}
+```
+
+**infra/index.ts** (updated):
+```typescript
+import { applyGlobalTransformations } from "./transformations";
+import { setupStorage } from "./storage";
+import { setupDatabase } from "./database";
+import { setupFunctions } from "./functions";
+
+export async function run() {
+  // Apply global transformations first
+  applyGlobalTransformations();
+  
+  // Set up resources
+  const storage = await setupStorage();
+  const database = await setupDatabase();
+  const functions = await setupFunctions(storage, database);
+  
+  // Return outputs
+  return {
+    // Outputs here
+  };
+}
+```
+
+**infra/functions.ts**:
+```typescript
+import { StorageResources } from "./storage";
+import { DatabaseResources } from "./database";
+
+export interface FunctionResources {
+  api: sst.aws.Function;
+  worker: sst.aws.Function;
+}
+
+export async function setupFunctions(
+  storage: StorageResources,
+  database: DatabaseResources
+): Promise<FunctionResources> {
+  // API function with specific transformations
+  const api = new sst.aws.Function("ApiFunction", {
+    handler: "packages/functions/src/api/handler.handler",
+    url: true,
+    // Apply specific transformations
+    transform: {
+      // Customize the IAM role
+      role: (args) => {
+        args.name = `${args.name}-ApiRole`;
+        args.managedPolicies = [
+          ...(args.managedPolicies || []),
+          { name: "AmazonSESFullAccess" },
+        ];
+        args.inlinePolicies = {
+          ...(args.inlinePolicies || {}),
+          ApiCustomPolicy: JSON.stringify({
+            Version: "2012-10-17",
+            Statement: [
+              {
+                Effect: "Allow",
+                Action: [
+                  "dynamodb:BatchGetItem",
+                  "dynamodb:GetItem",
+                  "dynamodb:Query",
+                  "dynamodb:Scan",
+                ],
+                Resource: "*",
+              },
+            ],
+          }),
+        };
+      },
+      // Customize the Lambda function
+      function: (args) => {
+        args.description = "API function handling HTTP requests";
+        args.reservedConcurrentExecutions = 20;
+        args.environment = {
+          ...(args.environment || {}),
+          API_VERSION: "1.0",
+        };
+      },
+      // Customize the log group
+      logGroup: (args) => {
+        args.retentionInDays = 30;
+      },
+    },
+  });
+  
+  // Worker function with different transformations
+  const worker = new sst.aws.Function("WorkerFunction", {
+    handler: "packages/functions/src/worker/handler.handler",
+    timeout: "5 minutes",
+    memory: "2048 MB",
+    transform: {
+      function: (args) => {
+        args.description = "Background worker for processing tasks";
+        args.environment = {
+          ...(args.environment || {}),
+          WORKER_CONCURRENCY: "5",
+        };
+      },
+    },
+  });
+  
+  return {
+    api,
+    worker,
+  };
+}
+```
+
+**infra/vpc.ts**:
+```typescript
+export interface NetworkResources {
+  vpc: sst.aws.Vpc;
+}
+
+export async function setupNetwork(): Promise<NetworkResources> {
+  // Create a VPC with customized underlying resources
+  const vpc = new sst.aws.Vpc("AppNetwork", {
+    natGateways: 1,
+    transform: {
+      vpc: (args) => {
+        args.cidr = "10.0.0.0/16";
+        args.maxAzs = 3;
+        args.natGateways = 1;
+        args.flowLogs = true;
+      },
+      publicSubnet: (args) => {
+        args.mapPublicIpOnLaunch = true;
+        args.tags = {
+          ...(args.tags || {}),
+          Name: "PublicSubnet",
+          Tier: "Public",
+        };
+      },
+      privateSubnet: (args) => {
+        args.tags = {
+          ...(args.tags || {}),
+          Name: "PrivateSubnet",
+          Tier: "Private",
+        };
+      },
+    },
+  });
+  
+  return {
+    vpc,
+  };
+}
+```
+
+**Explanation**: This example demonstrates how to apply transformations to resources in a monorepo. The `./infra/transformations.ts` file contains global transformations applied to all components of specific types, ensuring consistent defaults across the application. Individual infrastructure modules can also apply component-specific transformations to customize resources further. The `transform` property allows precise control over the underlying AWS resources, enabling fine-tuning of configuration beyond what's directly exposed by the SST component APIs.
+
+---
+
+#### Example 13: CI/CD Configuration in a Monorepo
+
+**Task**: Set up CI/CD configuration for a monorepo with different environments.
+
+**Project Structure**:
+```
+my-sst-app/
+├─ infra/
+│  ├─ index.ts
+│  ├─ stages.ts
+├─ scripts/
+│  ├─ deploy.js
+│  ├─ build-functions.js
+├─ .github/
+│  ├─ workflows/
+│  │  ├─ deploy-dev.yml
+│  │  ├─ deploy-prod.yml
+│  │  ├─ pull-request.yml
+```
+
+**infra/stages.ts**:
+```typescript
+export interface StageConfig {
+  name: string;
+  domain?: string;
+  removal: "remove" | "retain";
+  env: Record<string, string>;
+  vpc: {
+    enabled: boolean;
+    natGateways: number;
+  };
+  scaling: {
+    min: number;
+    max: number;
+  };
+}
+
+export function getStageConfig(stageName: string): StageConfig {
+  const defaultConfig: StageConfig = {
+    name: stageName,
+    removal: "remove",
+    env: {
+      NODE_ENV: "development",
+    },
+    vpc: {
+      enabled: false,
+      natGateways: 0,
+    },
+    scaling: {
+      min: 1,
+      max: 1,
+    },
+  };
+  
+  // Stage-specific configurations
+  const stageConfigs: Record<string, Partial<StageConfig>> = {
+    dev: {
+      env: {
+        NODE_ENV: "development",
+        LOG_LEVEL: "debug",
+      },
+      scaling: {
+        min: 1,
+        max: 1,
+      },
+    },
+    staging: {
+      domain: "staging.myapp.com",
+      env: {
+        NODE_ENV: "staging",
+        LOG_LEVEL: "info",
+      },
+      vpc: {
+        enabled: true,
+        natGateways: 1,
+      },
+      scaling: {
+        min: 1,
+        max: 2,
+      },
+    },
+    prod: {
+      domain: "myapp.com",
+      removal: "retain",
+      env: {
+        NODE_ENV: "production",
+        LOG_LEVEL: "warn",
+      },
+      vpc: {
+        enabled: true,
+        natGateways: 3,
+      },
+      scaling: {
+        min: 2,
+        max: 10,
+      },
+    },
+  };
+  
+  // Merge default config with stage-specific config
+  return {
+    ...defaultConfig,
+    ...stageConfigs[stageName] || {},
+  };
+}
+```
+
+**sst.config.ts**:
+```typescript
+/// <reference path="./.sst/platform/config.d.ts" />
+import { run } from "./infra";
+import { getStageConfig } from "./infra/stages";
+
+export default $config({
+  app(input) {
+    const stage = input?.stage || "dev";
+    const config = getStageConfig(stage);
+    
+    return {
+      name: `my-app-${stage}`,
+      removal: config.removal,
+      home: "aws",
+    };
+  },
+  run
+});
+```
+
+**.github/workflows/deploy-dev.yml**:
+```yaml
+name: Deploy to Development
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build packages
+        run: npm run build
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+      
+      - name: Deploy to development
+        run: npx sst deploy --stage dev
+      
+      - name: Run tests
+        run: npm test
+```
+
+**.github/workflows/deploy-prod.yml**:
+```yaml
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build packages
+        run: npm run build
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          role-duration-seconds: 1200
+      
+      - name: Deploy to production
+        run: npx sst deploy --stage prod
+      
+      - name: Run smoke tests
+        run: npm run test:smoke
+```
+
+**.github/workflows/pull-request.yml**:
+```yaml
+name: Pull Request Checks
+
+on:
+  pull_request:
+    branches:
+      - dev
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Lint
+        run: npm run lint
+      
+      - name: Build
+        run: npm run build
+      
+      - name: Test
+        run: npm test
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+      
+      - name: Deploy PR preview
+        if: github.event_name == 'pull_request'
+        run: npx sst deploy --stage pr-${{ github.event.number }}
+```
+
+**package.json**:
+```json
+{
+  "name": "my-sst-app",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "sst dev",
+    "build": "sst build",
+    "deploy": "sst deploy",
+    "remove": "sst remove",
+    "console": "sst console",
+    "test": "vitest run",
+    "test:smoke": "vitest run --config vitest.smoke.config.ts",
+    "lint": "eslint --ext .js,.ts,.tsx ."
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "devDependencies": {
+    "@types/node": "^20.2.5",
+    "sst": "^2.36.1",
+    "typescript": "^5.1.3",
+    "vitest": "^0.34.1",
+    "eslint": "^8.44.0"
+  }
+}
+```
+
+**Explanation**: This example demonstrates how to set up CI/CD configuration for a monorepo in different environments. The `./infra/stages.ts` file defines stage-specific configurations for different environments (development, staging, production). The root `sst.config.ts` file imports the stage configuration and uses it to set up the app. GitHub Actions workflows are set up for deploying to different environments and running checks on pull requests. This structure makes it easy to manage deployments across multiple environments with different configurations.
+
+---
+
+#### Example 14: Working with Output Values in a Monorepo
+
+**Task**: Effectively work with Output values across different modules in a monorepo.
+
+**infra/outputs.ts**:
+```typescript
+import { StorageResources } from "./storage";
+import { ApiResources } from "./api";
+
+export interface OutputResources {
+  apiConfig: sst.aws.Output<string>;
+  storageConfig: sst.aws.Output<string>;
+}
+
+export async function setupOutputs(
+  storage: StorageResources,
+  api: ApiResources
+): Promise<OutputResources> {
+  // Use the $concat helper to work with Output values
+  const assetUrlPrefix = $concat(storage.bucket.domain, "/assets");
+  
+  // Use the $interpolate helper for string interpolation with Output values
+  const apiEndpoint = $interpolate`${api.url}/v1`;
+  
+  // Use $jsonStringify to create a stringified JSON config
+  const apiConfig = $jsonStringify({
+    endpoint: apiEndpoint,
+    version: "1.0",
+    timestamp: new Date().toISOString(),
+  });
+  
+  // Use $jsonStringify to create a stringified JSON config
+  const storageConfig = $jsonStringify({
+    bucketName: storage.bucket.name,
+    bucketDomain: storage.bucket.domain,
+    assetUrlPrefix,
+    region: "us-east-1",
+  });
+  
+  // Create a function that can access this configuration
+  const configFunction = new sst.aws.Function("ConfigFunction", {
+    handler: "packages/functions/src/config/handler.handler",
+    environment: {
+      API_CONFIG: apiConfig,
+      STORAGE_CONFIG: storageConfig,
+    },
+    url: true,
+  });
+  
+  // Use $resolve to work with multiple outputs together
+  const combinedConfig = $resolve([api.url, storage.bucket.name]).apply(
+    ([apiUrl, bucketName]) => {
+      // Here we can use actual values, not Output objects
+      return {
+        api: {
+          url: apiUrl,
+          version: "1.0",
+        },
+        storage: {
+          bucket: bucketName,
+          region: "us-east-1",
+        },
+        app: {
+          name: "my-app",
+          environment: process.env.STAGE || "dev",
+        },
+      };
+    }
+  );
+  
+  // Export for usage elsewhere in the codebase
+  return {
+    apiConfig,
+    storageConfig,
+  };
+}
+```
+
+**packages/core/src/config.ts**:
+```typescript
+import { Resource } from "sst";
+
+// Parse JSON configuration from environment variables
+export function getApiConfig() {
+  try {
+    const configJson = process.env.API_CONFIG;
+    
+    if (!configJson) {
+      throw new Error("API_CONFIG environment variable not found");
+    }
+    
+    return JSON.parse(configJson);
+  } catch (error) {
+    console.error("Error parsing API configuration:", error);
+    throw error;
+  }
+}
+
+// Parse JSON configuration from environment variables
+export function getStorageConfig() {
+  try {
+    const configJson = process.env.STORAGE_CONFIG;
+    
+    if (!configJson) {
+      throw new Error("STORAGE_CONFIG environment variable not found");
+    }
+    
+    return JSON.parse(configJson);
+  } catch (error) {
+    console.error("Error parsing storage configuration:", error);
+    throw error;
+  }
+}
+
+// Access linked resources directly
+export function getResourceConfig() {
+  return {
+    bucket: {
+      name: Resource.DataBucket.name,
+      domain: Resource.DataBucket.domain,
+    },
+    api: {
+      url: Resource.Api.url,
+    },
+    database: {
+      endpoint: Resource.Database.endpoint,
+      name: Resource.Database.database,
+    },
+  };
+}
+```
+
+**packages/functions/src/config/handler.ts**:
+```typescript
+import { APIGatewayProxyHandlerV2 } from "aws-lambda";
+import { getApiConfig, getStorageConfig, getResourceConfig } from "@my-app/core/src/config";
+
+export const handler: APIGatewayProxyHandlerV2 = async (event) => {
+  try {
+    // Get configuration from environment variables (using Output values)
+    const apiConfig = getApiConfig();
+    const storageConfig = getStorageConfig();
+    
+    // Get configuration from linked resources (using Resource object)
+    const resourceConfig = getResourceConfig();
+    
+    return {
+      statusCode: 200,
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        apiConfig,
+        storageConfig,
+        resourceConfig,
+        message: "Configuration fetched successfully",
+      }),
+    };
+  } catch (error) {
+    console.error("Error fetching configuration:", error);
+    
+    return {
+      statusCode: 500,
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        message: "Error fetching configuration",
+        error: error.message,
+      }),
+    };
+  }
+};
+```
+
+**infra/index.ts** (updated):
+```typescript
+import { setupStorage } from "./storage";
+import { setupApi } from "./api";
+import { setupOutputs } from "./outputs";
+
+export async function run() {
+  // Create resources in the correct dependency order
+  const storage = await setupStorage();
+  const api = await setupApi();
+  const outputs = await setupOutputs(storage, api);
+  
+  return {
+    apiUrl: api.url,
+    storageUrl: storage.bucket.domain,
+    // Use $resolve to work with multiple outputs for return values
+    config: $resolve([outputs.apiConfig, outputs.storageConfig]).apply(
+      ([apiCfg, storageCfg]) => ({
+        api: JSON.parse(apiCfg),
+        storage: JSON.parse(storageCfg),
+      })
+    ),
+  };
+}
+```
+
+**Explanation**: This example demonstrates how to work with Output values across different modules in a monorepo. Output values are resolved during deployment and can't be directly used in operations until resolved. The `./infra/outputs.ts` module shows various ways to work with Output values using helper functions like `$concat`, `$interpolate`, `$jsonStringify`, and `$resolve`. The core package provides utility functions for accessing configuration values from environment variables (set using Output values) and from linked resources (using the Resource object). This approach ensures type safety and provides a centralized way to manage configuration across the application.
+
+---
+
+#### Example 15: Integrating with SST Console in a Monorepo
+
+**Task**: Configure SST Console integration for deployment, monitoring, and preview environments in a monorepo.
+
+**infra/console.ts**:
+```typescript
+export interface ConsoleConfig {
+  enabled: boolean;
+  previews: {
+    enabled: boolean;
+    pullRequests: {
+      enabled: boolean;
+      pattern?: string;
+    };
+    branches: {
+      enabled: boolean;
+      pattern?: string;
+    };
+  };
+  monitoring: {
+    enabled: boolean;
+    errorThreshold: number;
+  };
+}
+
+export function getConsoleConfig(stage: string): ConsoleConfig {
+  // Base configuration
+  const baseConfig: ConsoleConfig = {
+    enabled: true,
+    previews: {
+      enabled: true,
+      pullRequests: {
+        enabled: true,
+      },
+      branches: {
+        enabled: false,
+      },
+    },
+    monitoring: {
+      enabled: true,
+      errorThreshold: 5, // 5% error rate threshold
+    },
+  };
+  
+  // Stage-specific configurations
+  const stageConfigs: Record<string, Partial<ConsoleConfig>> = {
+    dev: {
+      previews: {
+        pullRequests: {
+          enabled: true,
+          pattern: "pr-{id}.dev.myapp.com",
+        },
+      },
+    },
+    staging: {
+      previews: {
+        pullRequests: {
+          enabled: true,
+          pattern: "pr-{id}.staging.myapp.com",
+        },
+        branches: {
+          enabled: true,
+          pattern: "{branch}.staging.myapp.com",
+        },
+      },
+    },
+    prod: {
+      // Disable previews in production
+      previews: {
+        enabled: false,
+        pullRequests: {
+          enabled: false,
+        },
+        branches: {
+          enabled: false,
+        },
+      },
+      // Stricter monitoring in production
+      monitoring: {
+        errorThreshold: 1, // 1% error rate threshold for production
+      },
+    },
+  };
+  
+  // Filter out undefined values when merging
+  const mergeObjects = (target: any, source: any) => {
+    if (!source) return target;
+    if (!target) return source;
+    
+    const result = { ...target };
+    
+    for (const key in source) {
+      if (source[key] === null || source[key] === undefined) continue;
+      
+      if (typeof source[key] === 'object' && !Array.isArray(source[key])) {
+        result[key] = mergeObjects(result[key], source[key]);
+      } else {
+        result[key] = source[key];
+      }
+    }
+    
+    return result;
+  };
+  
+  // Merge base config with stage-specific config
+  return mergeObjects(baseConfig, stageConfigs[stage] || {});
+}
+```
+
+**sst.config.ts** (updated):
+```typescript
+/// <reference path="./.sst/platform/config.d.ts" />
+import { run } from "./infra";
+import { getStageConfig } from "./infra/stages";
+import { getConsoleConfig } from "./infra/console";
+
+export default $config({
+  app(input) {
+    const stage = input?.stage || "dev";
+    const stageConfig = getStageConfig(stage);
+    const consoleConfig = getConsoleConfig(stage);
+    
+    return {
+      name: `my-app-${stage}`,
+      removal: stageConfig.removal,
+      home: "aws",
+      console: consoleConfig,
+    };
+  },
+  run
+});
+```
+
+**packages/web/src/app/components/build-info.tsx**:
+```tsx
+"use client";
+
+import React from "react";
+import { Resource } from "sst";
+
+export function BuildInfo() {
+  return (
+    <div className="p-4 bg-gray-100 rounded-lg text-sm">
+      <h3 className="font-semibold mb-2">Build Information</h3>
+      <ul className="space-y-1">
+        <li><span className="font-medium">App:</span> {Resource.App.name}</li>
+        <li><span className="font-medium">Stage:</span> {Resource.App.stage}</li>
+        <li><span className="font-medium">Version:</span> {process.env.NEXT_PUBLIC_APP_VERSION || "development"}</li>
+        <li><span className="font-medium">Build Date:</span> {process.env.NEXT_PUBLIC_BUILD_DATE || new Date().toISOString()}</li>
+        {Resource.App.stage !== "prod" && (
+          <li className="mt-2">
+            <a 
+              href={`https://console.sst.dev/app/${Resource.App.name}/${Resource.App.stage}`} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:text-blue-800 underline"
+            >
+              View in SST Console →
+            </a>
+          </li>
+        )}
+      </ul>
+    </div>
+  );
+}
+```
+
+**scripts/deploy-pr.js**:
+```javascript
+#!/usr/bin/env node
+
+// This script can be used for deploying PR previews from CI/CD
+const { execSync } = require("child_process");
+const { readFileSync, writeFileSync } = require("fs");
+const path = require("path");
+
+// Get PR number from environment variable
+const prNumber = process.env.PR_NUMBER;
+if (!prNumber) {
+  console.error("PR_NUMBER environment variable is required");
+  process.exit(1);
+}
+
+// Set up stage name for the PR
+const stageName = `pr-${prNumber}`;
+
+// Deploy using SST
+console.log(`Deploying preview for PR #${prNumber} to stage ${stageName}...`);
+try {
+  // Build first
+  execSync(`npm run build`, { stdio: "inherit" });
+  
+  // Deploy
+  execSync(`npx sst deploy --stage ${stageName}`, { stdio: "inherit" });
+  
+  // Get deployed URL from SST outputs
+  const output = execSync(`npx sst outputs --stage ${stageName} --json`).toString();
+  const outputs = JSON.parse(output);
+  
+  // Log the deployed URL
+  const webUrl = outputs.webUrl || "No web URL found in outputs";
+  const apiUrl = outputs.apiUrl || "No API URL found in outputs";
+  
+  console.log(`\n✅ PR Preview deployed successfully!`);
+  console.log(`📱 Frontend URL: ${webUrl}`);
+  console.log(`🔌 API URL: ${apiUrl}`);
+  console.log(`🔍 SST Console: https://console.sst.dev/preview/pr-${prNumber}`);
+  
+  // Create a comment file for GitHub Actions to post on the PR
+  const commentFile = path.join(__dirname, "../pr-comment.md");
+  const comment = `
+## 🚀 PR Preview Deployed!
+
+Your changes have been deployed to a preview environment:
+
+- **Frontend:** @View Site
+- **API:** \`${apiUrl}\`
+- **SST Console:** @View Deployment
+
+This preview will be automatically updated when you push new changes to this PR.
+  `;
+  
+  writeFileSync(commentFile, comment);
+  console.log(`\nComment file created at ${commentFile}`);
+} catch (error) {
+  console.error("Deployment failed:", error);
+  process.exit(1);
+}
+```
+
+**.github/workflows/preview.yml**:
+```yaml
+name: Deploy PR Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - dev
+      - main
+
+jobs:
+  deploy-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Deploy PR preview
+        run: node scripts/deploy-pr.js
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: us-east-1
+      
+      - name: Comment on PR
+        if: success()
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const commentBody = fs.readFileSync('./pr-comment.md', 'utf8');
+            
+            const { owner, repo, number } = context.issue;
+            
+            // Check if there's already a comment from the bot
+            const comments = await github.rest.issues.listComments({
+              owner,
+              repo,
+              issue_number: number,
+            });
+            
+            const botComment = comments.data.find(comment => 
+              comment.user.login === 'github-actions[bot]' && 
+              comment.body.includes('PR Preview Deployed')
+            );
+            
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: botComment.id,
+                body: commentBody,
+              });
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: number,
+                body: commentBody,
+              });
+            }
+```
+
+**Explanation**: This example demonstrates how to integrate the SST Console with a monorepo setup. The `./infra/console.ts` module defines the console configuration with environment-specific settings. The script `./scripts/deploy-pr.js` is used for deploying PR previews from CI/CD workflows. GitHub Actions is configured to automatically deploy previews for pull requests and post comments with deployment information. A React component is provided to display build information with a link to the SST Console. This setup enables efficient preview environments, comprehensive monitoring, and easy access to deployment details, enhancing the development workflow in a monorepo.
+
+---
+
+### Notes
+
+SST v3 offers a powerful approach to defining your infrastructure as code in a monorepo structure. This organization separates infrastructure code from application code, making your codebase more maintainable and scalable as your application grows.
+
+Key features to remember when working with SST v3 in a monorepo:
+
+1. **Monorepo Structure**: 
+   - Place infrastructure code in the `./infra/` directory
+   - Keep application code in the `./packages/` directory
+   - Use the root `sst.config.ts` file to import and configure your infrastructure
+
+2. **Modular Infrastructure**: 
+   - Split infrastructure code into separate files by resource type
+   - Export typed interfaces for each module's resources
+   - Establish clear dependencies between modules through function parameters
+   - Import and compose modules in the main `run` function
+
+3. **Workspace Dependencies**:
+   - Use workspace dependencies to share code between packages
+   - Create a core package for shared utilities, types, and interfaces
+   - Import from other packages using the pattern `@my-app/package-name`
+
+4. **Resource Linking**: 
+   - Link resources to functions and frontends using the `link` property
+   - Access linked resources in code using the SST SDK's `Resource` object
+   - Create shared utilities in the core package for accessing common resources
+
+5. **Environment Configuration**:
+   - Define environment-specific configurations in separate files
+   - Use stage parameters to adjust settings for different environments
+   - Apply global transformations for consistent defaults across environments
+
+6. **CI/CD Integration**:
+   - Set up GitHub Actions workflows for different deployment environments
+   - Create scripts for automating deployments and preview environments
+   - Configure SST Console integration for monitoring and management
+
+7. **Local Development**:
+   - Run `sst dev` to start a local development environment
+   - For frontends, use `sst bind` with your framework's dev command (e.g., `sst bind next dev`)
+   - Test both frontend and backend changes in a unified environment
+
+8. **Package Organization**:
+   - Group related functions into logical directories
+   - Keep consistent naming patterns between infrastructure and code
+   - Use clear imports to maintain dependency relationships
+
+By following these patterns, you can effectively build and maintain complex applications with SST v3 in a monorepo structure. This approach scales well from small projects to large, multi-team applications, providing a consistent and maintainable structure as your application grows.
+
+The monorepo pattern particularly shines when you have multiple interdependent services or when you're building a full-stack application with shared types and utilities. By keeping everything in one repository but with clear separation, you achieve both modularity and integration, enabling faster development and easier maintenance.
+
