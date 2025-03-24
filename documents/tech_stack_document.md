@@ -4,34 +4,23 @@ This document provides an overview of the technology choices for our basic SaaS 
 
 ## Frontend Technologies
 
-Our application’s user interface is built using modern web development tools to ensure a clean, responsive, and user-friendly experience. The key technologies include:
-
-*   **Next.js 14 (app router)**: Provides a solid framework based on React to build interactive interfaces and manage page routing efficiently. It helps us serve dynamic content quickly while maintaining a modern user experience.
-*   **TypeScript**: Adds strong typing to our code, reducing errors and making the development process smoother and more predictable.
-*   **Tailwind CSS**: A utility-first CSS framework that lets us rapidly build beautiful, responsive designs while maintaining consistency across the application.
-*   **shadcn UI**: A component library that works well with Tailwind CSS to offer a pre-designed, modern, and cohesive set of UI elements. These components accelerate the build process while ensuring the design remains professional and accessible.
-
-Together, these choices allow us to build an interface that not only looks great but is also interactive, maintainable, and scalable for future features.
-
 ## Backend Technologies
 
 For the backend, our goal is to offer a secure and efficient system that handles all essential data operations. We use:
 
-*   **Supabase**:
+   **SST**:
 
-    *   Provides a powerful database to store user data.
-    *   Offers robust authentication functionality which supports email/password and social logins.
-    *   Handles storage needs and related APIs, ensuring data such as profile details and images are managed securely.
-
-Supabase plays a central role by taking care of the heavy lifting for user management—this includes email verifications, password resets, and session management. Its integrated tools help ensure that security best practices are implemented right out of the box, reducing the risk of vulnerabilities.
+    *   Provides a framework to deploy everything your app needs with a single config(sst.config.ts).
+    *   SST defines in a single `sst.config.ts` file. This includes databases, buckets, queues, Stripe webhooks, or any one of 150+ providers including Amazon Web Services(AWS).
+    *   SST automatically manages the resources in AWS (or any provider) defined in your app.  You don’t need to make any manual changes to them in your cloud provider’s console.
 
 ## Infrastructure and Deployment
 
 To ensure our application is reliable, scalable, and easy to deploy, we have carefully chosen modern infrastructure tools:
 
-*   **Hosting Platforms**: We deploy the application on platforms that support Next.js and provide scalable solutions (e.g., Vercel, Netlify, or similar cloud hosting services).
-*   **CI/CD Pipelines**: Automated testing and deployment are set up using industry-standard CI/CD tools. This setup ensures that any updates or new features are thoroughly tested before going live, leading to a more stable and reliable application.
-*   **Version Control**: We use Git (with repositories on GitHub) to manage our codebase, track changes, and enable smooth collaboration among developers.
+   **Hosting Platforms**: We deploy the application to AWS using SST's built-in deployment tools.
+   **CI/CD Pipelines**: Deployment is managed with SST, as outlined in the [SST Deploy documentation](https://sst.dev/docs/reference/cli#deploy)
+   **Version Control**: We use Git (with repositories on GitHub) to manage our codebase, track changes, and enable smooth collaboration among developers.
 
 This combination delivers a deployment process that is streamlined and robust, making it easy to roll out enhancements and fixes with confidence.
 
@@ -39,25 +28,19 @@ This combination delivers a deployment process that is streamlined and robust, m
 
 To extend the functionality of our SaaS template and meet users’ needs, additional third-party services have been integrated:
 
-*   **Social Login Providers**: These allow users to sign in using platforms like Google, Facebook, or GitHub. By offering multiple login options, we enhance security and user convenience.
-*   **GPT-4o Integration**: This AI system provides personalized content recommendations and support within the application. It’s embedded in the dashboard and profile sections, ensuring that users receive helpful, context-aware assistance without interrupting their workflow.
-
 These integrations help enrich the overall user experience, providing advanced features with minimal additional development overhead.
 
 ## Security and Performance Considerations
 
 Security and performance are core aspects of our application design:
 
-*   **Security Measures**:
+   **Security Measures**:
 
-    *   Use of Supabase’s built-in authentication flows for secure logins and user data protection.
     *   Email verification is enforced during sign-up to maintain account integrity.
     *   Password reset processes are carefully implemented with secure token validation to prevent unauthorized access.
 
-*   **Performance Optimizations**:
+   **Performance Optimizations**:
 
-    *   Next.js’s server-side rendering and static site generation improve page load speeds and overall responsiveness.
-    *   Tailwind CSS and shadcn UI components facilitate fast, consistent UI rendering that scales well under increased load.
     *   CI/CD practices ensure every code change is tested and optimized before deployment.
 
 These practices ensure that users enjoy a fast, secure, and seamless experience no matter how many users interact with the system simultaneously.
@@ -66,11 +49,12 @@ These practices ensure that users enjoy a fast, secure, and seamless experience 
 
 In summary, our tech stack is chosen to balance modern design, robust functionality, and ease of development:
 
-*   **Frontend**: Next.js 14, TypeScript, Tailwind CSS, and shadcn UI help us build a modern, responsive, and consistent interface.
-*   **Backend**: Supabase takes care of database management, secure authentication, and data storage, ensuring user data is handled with top-notch security and efficiency.
-*   **Infrastructure & Deployment**: Modern hosting platforms, CI/CD pipelines, and version control through GitHub ensure a reliable, scalable, and continuously improved application.
-*   **Third-Party Integrations**: Social logins and GPT-4o add convenience and smart, AI-driven assistance to enhance user interactions.
-*   **Security & Performance**: Emphasis on best practices for secure authentication, data protection, and optimized performance assures a reliable and smooth user experience.
+   **Frontend**: will be completed in future versions, with files stored in the `./packages/frontend` directory.
+   **Backend**: SST manages the back-end including provisioning AWS services and making the resources shareable across packages.
+   **Infrastructure**: Infrastructure is defined as Infrastructure as Code or IaC is a process of automating the management of infrastructure through code rather than doing it manually through a console or user interface.
+   **Deployment**: SST apps are deployed to your infrastructure with AWS credentials configured locally. SST also comes with a Console. It shows you all your apps, the resources in them, lets you configure git push to deploy, and also send you alerts for when there are any issues.  More information about SST deployment is available in the [SST Workflow deploy documentation](https://sst.dev/docs/workflow/#deploy)
+   **Third-Party Integrations**:
+   **Security & Performance**: Emphasis on best practices for secure authentication, data protection, and optimized performance assures a reliable and smooth user experience.
 
 These choices make our SaaS template not only a great starting point for developers to launch their services quickly but also a secure, scalable, and future-proof platform that can grow with expanding business needs.
 

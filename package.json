@@ -1,15 +1,23 @@
 {
-  "name": "monorepo-template",
-  "version": "0.0.0",
+  "name": "monorepo-template-cursor",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
   "workspaces": [
     "packages/*"
   ],
-  "scripts": {},
-  "devDependencies": {
-    "@tsconfig/node22": "^22",
-    "typescript": "^5"
+  "scripts": {
+    "dev": "sst dev",
+    "build": "sst build",
+    "deploy": "sst deploy",
+    "remove": "sst remove",
+    "console": "sst console",
+    "typecheck": "tsc --noEmit"
   },
-  "dependencies": {
-    "sst": "^3"
+  "devDependencies": {
+    "sst": "^3.0.0",
+    "aws-cdk-lib": "2.91.0",
+    "typescript": "^5.1.6",
+    "@tsconfig/node18": "^18.2.0"
   }
 }

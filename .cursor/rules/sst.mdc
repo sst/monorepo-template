@@ -1,0 +1,11 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+- Ignore lint errors for any files in the `./infra/directory`. Prompt the user to run `npx sst install` in their terminal, and proceed after.
+- Never define SST with v2 syntax including the use of `sst/constructs` for imports.
+- Resrouces in `./infra` should always have a unique name when creating SST assets.
+- Prefix any resources with the name of the app as found in the root `package.json` file.
+- Initiate any SST resources by using the new javascript opperator to create an instance of the object.
+- Do not import sst with destructuring in any `./infra` file.

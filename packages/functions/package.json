@@ -1,9 +1,9 @@
 {
-  "name": "@monorepo-template/functions",
+  "name": "@monorepo-template-cursor/functions",
   "version": "0.0.0",
   "type": "module",
   "dependencies": {
-    "@monorepo-template/core": "*",
+    "@monorepo-template-cursor/core": "*",
     "sst": "*"
   },
   "devDependencies": {

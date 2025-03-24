@@ -1,4 +1,4 @@
-# Monorepo Template
+# Cursor ehanced Monorepo Template
 
 A template to create a monorepo SST v3 project. [Learn more](https://sst.dev/docs/set-up-a-monorepo).
 
@@ -6,27 +6,11 @@ A template to create a monorepo SST v3 project. [Learn more](https://sst.dev/doc
 
 1. Use this template to [create your own repo](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template).
 
-2. Clone the new repo.
+2. Rename the files in the project to the name of your app.
 
    ```bash
-   git clone <REPO_URL> MY_APP
-   cd MY_APP
+   npx replace-in-file '/monorepo-templtate-cursor/g' '$APP_NAME' '**/*.*' --verbose
    ```
-
-3. Rename the files in the project to the name of your app.
-
-   ```bash
-   npx replace-in-file '/monorepo-template/g' 'MY_APP' '**/*.*' --verbose
-   ```
-
-4. Deploy!
-
-   ```bash
-   npm install
-   npx sst deploy
-   ```
-
-5. Optionally, enable [_git push to deploy_](https://sst.dev/docs/console/#autodeploy).
 
 ## Usage
 
@@ -47,7 +31,7 @@ This template uses [npm Workspaces](https://docs.npmjs.com/cli/v8/using-npm/work
    That you can use across other packages using.
 
    ```ts
-   import { Example } from "@aws-monorepo/core/example";
+   import { Example } from "@monorepo-templtate-cursor/core/example";
 
    Example.hello();
    ```
@@ -77,5 +61,3 @@ The `infra/` directory allows you to logically split the infrastructure of your 
 In the template, we have an `api.ts`, and `storage.ts`. These export the created resources. And are imported in the `sst.config.ts`.
 
 ---
-
-**Join our community** [Discord](https://sst.dev/discord) | [YouTube](https://www.youtube.com/c/sst-dev) | [X.com](https://x.com/SST_dev)

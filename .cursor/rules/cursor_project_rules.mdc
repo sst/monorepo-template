@@ -1,13 +1,13 @@
 ---
-description: 
+description: Apply these rules when creating the project
 globs: 
 alwaysApply: true
 ---
 ## Project Overview
 
 *   **Type:** cursor_project_rules
-*   **Description:** <project_description>
-*   **Primary Goal:** <project_goal>>
+*   **Description:** I am developing a basic SaaS template that incorporates essential user management features such as secure user login, profile editing, and password reset capabilities. The template is designed for developers to quickly launch robust and scalable applications with standard user functionalities already in place.
+*   **Primary Goal:** Build a secure, scalable SaaS foundation by providing pre-built user authentication (including email/password and social logins), email verification, profile management, and password reset flows powered by SST, and AWS along with modern UI components and AI-driven support integration (Claude, OpenAI).
 
 ## Project Structure
 
@@ -15,79 +15,77 @@ alwaysApply: true
 ├── infra
 │   ├── api.ts
 │   └── storage.ts
+│   └── cron.ts
+│   └── dynamo.ts
+│   └── queue.ts
+│   └── secrets.ts
+│   └── worker.ts
 ├── packages
-│   ├── shared
+│   ├── core
 │   ├── frontend
 │   ├── functions
 │   └── scripts
-
 
 ### Framework-Specific Routing
 
 *   **Directory Rules:**
 
-    *   **reactJs:**  For React Router 6 projects, use `src/routes/` with `createBrowserRouter` for route management.
+    *   **SST:**  Encforce the use of the `./infra/` directory to maintain the monorepo structure. You can view an example monorepo template at SST's official [SST v3 monorepo-template](mdc:https:/github.com/sst/monorepo-template) and [SST v3 Monorepo documentation](mdc:https:/sst.dev/docs/set-up-a-monorepo). For example, if a new type of infrastructure is needed create a typescript file with the name of the component such as `./infra/redis.ts` if implenting new redis infrastructure. 
 
 ### Core Directories
 
-*   **Versioned Structure:**
+*   **Infra Structure** 
+    * The `./infra/*` directory allows you to logically split the infrastructure of the app into separate files. This can be helpful as the app grows.  As example, in the templates infra director, we have an api.ts, and storage.ts which are initialized in the root `sst.config.ts`. These export resources that can be used in the other infrastructure files.
+
+*   **Package Structure:**
+    *   The `./packages/*` directory has your workspaces and this is in the root `package.json`.
+    *   **packages/functions:** This directory includes our AWS API Gateway Lambda functions. It imports from the core/ package by using it as a local dependency.
+    *   **packages/frontend:** Contains the default front-end framework Like ReactJS or NextJS.
+    *   **packages/scripts:** This directory includes scripts that you can run on your SST app using the sst shell CLI and tsx.
+    *   **packages/core:** This directory includes shared code that can be used by other packages. These are defined as modules.
 
 ### Key Files
 
-*   **Stack-Versioned Patterns:**
+*   **SST Configuration:**
+    *   The sst.config.ts file is used to configure your SST app and its resources.
+    *   You specify it using the `$config` function. This takes an object of type Config.
 
+*   **Stack-Versioned Patterns:**
 
 ## Tech Stack Rules
 
 *   **Version Enforcement:**
 
-    *   **typescript:** Enforce strict type-checking to reduce runtime errors.
-    *   **material design & tailwind css:** Follow UI/UX best practices and use responsive utility classes without over-cluttering the markup.
-    *   **supabase:** Leverage for additional backend needs and seamless data management.
-    *   **anthropic_claude_3_7_sonnet:** Use for advanced AI-powered code suggestions and reasoning integrations.
+    *   **API Gateway:** Enforce secure usage; API keys and endpoints should be stored as SST Secrets, as outlined in [SST's Secret documentation](mdc:https:/sst.dev/docs/component/secret).
 
 ## PRD Compliance
 
 *   **Non-Negotiable:**
 
+    *   "We are building this SaaS template to save time for startups and developers by offering pre-built, standardized user management components." - This mandates robust, scalable user authentication, email verification, profile management, and secure password reset flows using SST.
 
 ## App Flow Integration
 
-*   **Stack-Aligned Flow:**
-
 ## Best Practices
 
-*   **next.js 14**
+*   **SST**
 
-    *   Enforce App Router with nested directories under `app/`.
-    *   Utilize server and client components appropriately to optimize performance.
-    *   Maintain clear separation between layout and page-level components.
+    *   Store API keys securely as SST Secrets, as outlined in [SST's Secret documentation](mdc:https:/sst.dev/docs/component/secret).
+    *   Bootstrap with SST v3 Monorepo Template and Cursor’s AI Setup: Kick off your project using the template at GitHub, featuring sst.config.ts and packages/. In Cursor IDE, harness AI-powered code generation to customize the initial setup (e.g., tweak workspace paths) and use its smart navigation to explore infra/ and functions/, accelerating project initialization.
+    *   Modularize infra/ Files with Cursor’s Code Prediction: Define infrastructure in infra/ with separate files like queues.ts and tables.ts, linked in sst.config.ts. Optimize in Cursor by relying on predictive coding to craft SST constructs (e.g., sst.aws.Queue) and its multi-file editing to sync changes across the monorepo, boosting modularity and performance.
+    *   Adopt Npm Workspaces and Cursor’s Terminal Efficiency: Set up "workspaces": ["packages/*"] in package.json for package-specific dependencies (e.g., npm install per directory). Use Cursor’s built-in terminal to execute npx sst dev and monitor outputs, paired with its dependency tree visualization to resolve conflicts across core/ and services/, enhancing collaboration.
+    *   Streamline Shared Logic in core/ with Cursor’s Auto-Completion: House utilities in packages/core/ with exports like "./*": "./src/*.ts". In Cursor, tap into auto-completion to integrate these into functions/ or other packages, and use its inline documentation feature to annotate shared code, ensuring team-friendly maintainability and fast iteration.
 
-*   **typescript**
+*   **TypeScript**
 
-    *   Use strict typing and avoid implicit any's.
-    *   Create reusable types/interfaces for shared data structures.
-    *   Integrate with eslint and prettier for code consistency.
+    *   Enforce strict typing and use interfaces for component props.
+    *   Leverage type inference to minimize boilerplate.
+    *   Utilize ESLint and Prettier integrations to maintain code quality.
 
-*   **material design & tailwind css**
-
-    *   Follow established design guidelines to ensure a cohesive UI.
-    *   Use Tailwind's utility-first approach while avoiding overuse of inline styles.
-    *   Ensure components are mobile-responsive and accessible.
-
-*   **supabase**
-
-    *   Use for additional backend storage and real-time data synchronization.
-    *   Ensure secure API integrations by using RLS and JWT authentication.
-    *   Maintain regular backups of data and utilize built-in monitoring tools.
-
-*   **anthropic_claude_3_7_sonnet**
-
-    *   Utilize for AI-powered code suggestions during development.
-    *   Integrate its feedback loop to improve code quality and reduce errors.
-    *   Regularly review AI suggestions for compliance with the platform's security and performance standards.
 
 ## Rules
 
-*   Derive folder/file patterns **directly** from techStackDoc versions and established routing patterns.
-*   Maintain strict adherence to PRD requirements regarding <project_features>
+*   Derive folder/file patterns directly from the tech stack versions provided (SST v3).
+*   Maintain strict separation between frontend UI components and backend API routes as defined by SST documentation.
+*   All AI integrations (GPT-4o, Claude 3.7) must be implemented in ways that do not compromise core security and user management flows.
+*   Follow industry best practices for security, performance, and maintainability as outlined in the PRD and tech stack documentation.

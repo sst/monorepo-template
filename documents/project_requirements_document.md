@@ -10,22 +10,22 @@ We are building this SaaS template to save time for startups and developers by o
 
 **In-Scope:**
 
-*   Secure user authentication with traditional email/password and social login options.
-*   User registration with email verification process.
-*   A user-friendly profile editing interface.
-*   A secure password reset mechanism.
-*   A clear and responsive UI for landing page, login/signup, dashboard, profile, and password reset pages.
-*   Integration with Supabase for backend services including authentication, database storage, and secure user data handling.
-*   Incorporation of GPT-4o for AI-driven support, personalized content recommendations, and potential live chat support.
-*   Use of modern tech stack components such as Next.js 14, TypeScript, Tailwind CSS, shadcn UI, and Supabase.
+    *   Secure user authentication with traditional email/password and social login options.
+    *   User registration with email verification process.
+    *   A user-friendly profile editing interface.
+    *   A secure password reset mechanism.
+    *   A clear and responsive UI for landing page, login/signup, dashboard, profile, and password reset pages.
+    *   Integration with Supabase for backend services including authentication, database storage, and secure user data handling.
+    *   Incorporation of GPT-4o for AI-driven support, personalized content recommendations, and potential live chat support.
+    *   Use of modern tech stack components such as Next.js 14, TypeScript, Tailwind CSS, shadcn UI, and Supabase.
 
 **Out-of-Scope:**
 
-*   Advanced, non-standard features such as multi-factor authentication (beyond existing social login integrations).
-*   In-depth analytics or reporting features for user activities.
-*   Custom AI features or third-party plugins beyond the provided GPT-4o integration.
-*   Mobile-specific adaptations; this template is focused on web and desktop environments for now.
-*   Extensive role management or admin dashboards (only basic user management is provided).
+    *   Advanced, non-standard features such as multi-factor authentication (beyond existing social login integrations).
+    *   In-depth analytics or reporting features for user activities.
+    *   Custom AI features or third-party plugins beyond the provided GPT-4o integration.
+    *   Mobile-specific adaptations; this template is focused on web and desktop environments for now.
+    *   Extensive role management or admin dashboards (only basic user management is provided).
 
 ## 3. User Flow
 
@@ -35,119 +35,108 @@ Once the user selects signup, they are guided to a dedicated Signup Page where t
 
 ## 4. Core Features (Bullet Points)
 
-*   **User Authentication and Authorization**
+### User Authentication and Authorization
 
     *   Secure login using email/password and options for social logins (Google, Facebook, GitHub).
     *   Session management and error feedback for authentication issues.
     *   Built-in measures to prevent brute force attacks and enforce password policies.
 
-*   **User Registration and Email Verification**
+### User Registration and Email Verification
 
     *   Streamlined signup process with basic input fields.
     *   Automated email verification using Supabase to authenticate new users.
 
-*   **Profile Management**
+### Profile Management
 
     *   A dedicated, interactive profile page where users can view and edit personal details.
     *   Real-time update capabilities utilizing shadcn UI components for a responsive experience.
 
-*   **Password Reset Functionality**
+### Password Reset Functionality
 
     *   A secure flow that allows users to request a password reset via their registered email.
     *   Dedicated guidance through the reset process to ensure account recovery is both user-friendly and secure.
 
-*   **Dashboard Navigation**
+### Dashboard Navigation
 
     *   A central hub for logged-in users to access various application functionalities.
     *   Clear navigation layout linking profile editing, account settings, and additional support via AI.
 
-*   **AI Integration**
+### AI Integration
 
-    *   Incorporation of GPT-4o to offer personalized support and content recommendations.
+    *   Incorporation of Claude, icluding Cloud Code to offer personalized support and content recommendations.
     *   Seamless AI interactions that complement traditional user management features.
 
 ## 5. Tech Stack & Tools
 
-*   **Frontend:**
+### Frontend
 
-    *   Next.js 14 with the app router, using TypeScript for type safety.
-    *   Tailwind CSS for styling and responsiveness.
-    *   shadcn UI component library to build visually consistent and modern interfaces.
+### Backend & Storage
 
-*   **Backend & Storage:**
+    *   SST to manage back-end operations, user authentication, and secure storage of user data.
+    *   Use of AWS API  API services for email verification and password reset flows.
 
-    *   Supabase to handle database operations, user authentication, and secure storage of user data.
-    *   Use of Supabase’s API services for email verification and password reset flows.
+### AI Models & Tools
 
-*   **AI Models & Tools:**
+    *   Claude 3.5 and 3.7 for providing AI-driven support features, personalized content recommendations, and possibly live chat assistance.
 
-    *   GPT-4o for providing AI-driven support features, personalized content recommendations, and possibly live chat assistance.
-
-*   **IDE/Plugin Integrations:**
+### IDE/Plugin Integrations
 
     *   Cursor for advanced IDE functionalities and real-time coding suggestions.
-    *   Claude 3.7 Sonnet and Claude 3.5 Sonnet for intelligent code assistance.
-    *   Deepseek R1 for reasoning and additional AI support.
+    *   Claude 3.7 Sonnet and Claude 3.5 Sonnet and other models for intelligent code assistance.
 
-*   **Starter Kit Reference:**
+### Starter Kit Reference
 
-    *   The project will leverage an existing React + Supabase starter kit available at: <https://github.com/codeGuide-dev/codeguide-vite-supabase>
+    *   The project will leverage an existing SST Monorepo starter kit available at: <hhttps://github.com/sst/monorepo-template-cursor>
     *   This kit includes a predefined project structure to get started quickly.
 
 ## 6. Non-Functional Requirements
 
-*   **Performance:**
+### Performance
 
     *   The application should load quickly and efficiently respond to all user inputs.
     *   Target load times should be under 2 seconds for main pages such as login, dashboard, and profile pages.
 
-*   **Security:**
+### Security
 
     *   Follow industry best practices to ensure user data is securely handled, including encrypted communications and secure authentication flows.
     *   Utilize Supabase’s authentication and storage capabilities to safeguard user credentials and personal data.
     *   Ensure password reset and email verification processes are tamper-proof.
 
-*   **Usability:**
+### Usability
 
     *   The UI should be straightforward, intuitive, and accessible across different devices.
     *   Error messages and user prompts should be clear and helpful, guiding the user smoothly through each action.
 
-*   **Compliance:**
+### Compliance
 
     *   Adhere to relevant data protection regulations, ensuring that user data is managed and stored in compliance with standards such as GDPR when applicable.
 
 ## 7. Constraints & Assumptions
 
-*   **Constraints:**
+### Constraints
 
-    *   Dependency on Supabase for all backend functionalities, meaning its availability and performance are critical to the project.
+    *   Dependency on SST and AWS for all backend functionalities, meaning its availability and performance are critical to the project.
     *   AI-driven features depend on the reliable integration of GPT-4o, which must be available and performant.
     *   The project is built primarily for web use; mobile-specific adaptations are not included in this phase.
 
-*   **Assumptions:**
+### Assumptions
 
-    *   Developers using this template have basic familiarity with Next.js, TypeScript, and Tailwind CSS.
-    *   Supabase will handle all critical aspects of authentication and database storage, reducing the need for custom backend development.
-    *   The AI integrations will serve as supplemental features to improve user experience without impacting core user management processes.
+    *   Developers using this template have basic familiarity with TypeScript and AWS Architecture best practices.
 
 ## 8. Known Issues & Potential Pitfalls
 
-*   **API Rate Limits & Integration Issues:**
+### API Rate Limits & Integration Issues
 
-    *   Supabase’s API rate limits could affect the performance during peak usage times. Mitigation strategies include implementing caching where possible and monitoring API usage.
+    *   Amazons API Gateway has a maximum Payload Size of 10MB for both request and response bodies.
+    *   The default maximum integration timeout for REST APIs is 29 seconds.
+    *   Since AWS API Gateway are susceptable to cold starts.  Cold start is the initial delay when an AWS Lambda function is invoked for the first time or after being idle, as the function's runtime environment is initialized, including downloading code and setting up the execution environment. 
+
     *   Integrating social login might require managing API changes from third-party providers; ensure that the code is modular enough to quickly adapt if these changes occur.
 
-*   **UI/UX Inconsistencies:**
+### UI/UX Inconsistencies
 
     *   Given the reliance on Tailwind CSS and shadcn UI, there could be visual inconsistencies across different components. Regular visual audits and the use of design tokens can help maintain consistency.
 
-*   **AI Integration Challenges:**
-
-    *   The integration of GPT-4o may introduce latency or unexpected behavior if the model experiences high load or is temporarily unavailable. It is advisable to design fallback content or notifications for users in such cases.
-    *   Ensuring that AI recommendations remain relevant and non-intrusive can be challenging. A/B testing and user feedback may be used to continuously improve the user experience.
-
-*   **Scalability Concerns:**
-
-    *   As the number of users increases, ensuring that both the frontend and backend scale efficiently will be critical. Load testing and proper resource allocation on Supabase should be planned.
+### AI Integration Challenges
 
 By following this PRD, the AI model will have a clear and detailed understanding of the project's scope, functionality, and constraints, ensuring that subsequent technical documents can be generated without any ambiguity.
