@@ -1,4 +1,4 @@
-# Cursor ehanced Monorepo Template
+# Cursor ehanced SST.dev Monorepo Template
 
 A template to create a monorepo SST v3 project. [Learn more](https://sst.dev/docs/set-up-a-monorepo).
 
