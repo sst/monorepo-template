@@ -1,6 +1,4 @@
 /// <reference path="./.sst/platform/config.d.ts" />
-import { run } from "./infra";
-
 export default $config({
   app(input) {
     return {
@@ -9,5 +7,5 @@ export default $config({
       home: "aws",
     };
   },
-  run
+  run: require("./infra").run
 });

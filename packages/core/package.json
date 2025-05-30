@@ -1,5 +1,5 @@
 {
-  "name": "@monorepo-template-cursor/core",
+  "name": "@sst-monorepo-template/core",
   "type": "module",
   "version": "0.0.0",
   "scripts": {
@@ -12,9 +12,10 @@
     ]
   },
   "dependencies": {
+    "aws-cdk-lib": "2.199.0",
     "sst": "*"
   },
   "devDependencies": {
-    "vitest": "^2"
+    "vitest": "^3.1.4"
   }
 }

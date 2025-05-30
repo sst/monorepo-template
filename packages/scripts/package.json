@@ -1,9 +1,9 @@
 {
-  "name": "@monorepo-template-cursor/scripts",
+  "name": "@sst-monorepo-template/scripts",
   "version": "0.0.0",
   "type": "module",
   "dependencies": {
-    "@monorepo-template-cursor/core": "*",
+    "@sst-monorepo-template/core": "*",
     "sst": "*"
   },
   "scripts": {

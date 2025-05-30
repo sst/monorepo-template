@@ -1,5 +1,5 @@
 {
-  "name": "monorepo-template-cursor",
+  "name": "sst-monorepo-template",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -15,9 +15,16 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "sst": "^3.0.0",
-    "aws-cdk-lib": "2.91.0",
-    "typescript": "^5.1.6",
-    "@tsconfig/node18": "^18.2.0"
+    "@tsconfig/node18": "^18.2.0",
+    "@tsconfig/node24": "^24.0.1",
+    "@typescript-eslint/eslint-plugin": "^8.33.0",
+    "@typescript-eslint/parser": "^8.33.0",
+    "aws-cdk-lib": "^2.199.0",
+    "eslint": "^9.28.0",
+    "sst": "^3.16.0",
+    "typescript": "^5.8.3"
+  },
+  "engines": {
+    "node": "^24.1.0"
   }
 }

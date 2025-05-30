@@ -86,7 +86,7 @@ Once the user selects signup, they are guided to a dedicated Signup Page where t
 
 ### Starter Kit Reference
 
-    *   The project will leverage an existing SST Monorepo starter kit available at: <hhttps://github.com/sst/monorepo-template-cursor>
+    *   The project will leverage an existing SST Monorepo starter kit available at: <hhttps://github.com/sst/sst-monorepo-template>
     *   This kit includes a predefined project structure to get started quickly.
 
 ## 6. Non-Functional Requirements

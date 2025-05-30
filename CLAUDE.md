@@ -9,7 +9,7 @@
 
 ## Code Style Guidelines
 - **TypeScript**: Use Node 22 with ESM modules
-- **Imports**: Package imports follow format `import { Feature } from "@monorepo-template-cursor/core/feature"`
+- **Imports**: Package imports follow format `import { Feature } from "@sst-monorepo-template/core/feature"`
 - **Module System**: ESNext with Bundler moduleResolution
 - **Monorepo Structure**:
   - `core/`: Shared code with modular exports

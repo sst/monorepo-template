@@ -5,6 +5,24 @@
 
 declare module "sst" {
   export interface Resource {
+    "Api": {
+      "type": "sst.aws.ApiGatewayV2"
+      "url": string
+    }
+    "DataBucket": {
+      "name": string
+      "type": "sst.aws.Bucket"
+    }
+    "FrontendAstro": {
+      "type": "sst.aws.Astro"
+    }
+    "ReportsBucket": {
+      "name": string
+      "type": "sst.aws.Bucket"
+    }
+    "WebAstro": {
+      "type": "sst.aws.Astro"
+    }
   }
 }
 /// <reference path="sst-env.d.ts" />

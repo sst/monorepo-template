@@ -16,3 +16,15 @@ node_modules
 
 # misc
 .DS_Store
+
+# Ignore images in documents directory
+# (jpg, jpeg, png, gif, webp, svg, bmp, tiff, ico)
+documents/**/*.jpg
+documents/**/*.jpeg
+documents/**/*.png
+documents/**/*.gif
+documents/**/*.webp
+documents/**/*.svg
+documents/**/*.bmp
+documents/**/*.tiff
+documents/**/*.ico

@@ -15,7 +15,7 @@ This implementation plan outlines how to build a basic application using SST v3'
 
      ```json
      {
-       "name": "monorepo-template-cursor",
+       "name": "sst-monorepo-template",
        "version": "0.1.0",
        "private": true,
        "type": "module",
@@ -57,7 +57,7 @@ This implementation plan outlines how to build a basic application using SST v3'
      export default $config({
        app(input) {
          return {
-           name: "monorepo-template-cursor",
+           name: "sst-monorepo-template",
            removal: input?.stage === "production" ? "retain" : "remove",
            protect: ["production"].includes(input?.stage),
          };
@@ -83,7 +83,7 @@ This implementation plan outlines how to build a basic application using SST v3'
      ```typescript
 
      // Generic S3 bucket for storage
-     export const storageBucket = new sst.aws.Bucket("monorepo-template-cursor-bucket", {
+     export const storageBucket = new sst.aws.Bucket("sst-monorepo-template-bucket", {
        cors: true,
      });
      ```

@@ -40,7 +40,7 @@ This starter kit uses the following tech stack:
 
     ```typescript
 
-    export const Api = new sst.aws.ApiGatewayV2("monorepo-template-cursor-api", {
+    export const Api = new sst.aws.ApiGatewayV2("sst-monorepo-template-api", {
       link: [], // Link any required resources by importing them and listing wtihin the link array.
 
     });
