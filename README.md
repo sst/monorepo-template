@@ -16,7 +16,7 @@ A template to create a monorepo SST v3 project. [Learn more](https://sst.dev/doc
 3. Rename the files in the project to the name of your app.
 
    ```bash
-   npx replace-in-file '/monorepo-template/g' 'MY_APP' '**/*.*' --verbose
+   npx replace-in-file '/luca-sst/g' 'MY_APP' '**/*.*' --verbose
    ```
 
 4. Deploy!

@@ -1,5 +1,5 @@
 {
-  "name": "@monorepo-template/core",
+  "name": "@luca-sst/core",
   "type": "module",
   "version": "0.0.0",
   "scripts": {
@@ -15,6 +15,7 @@
     "sst": "*"
   },
   "devDependencies": {
+    "@types/aws-lambda": "^8.10.161",
     "vitest": "^2"
   }
 }
