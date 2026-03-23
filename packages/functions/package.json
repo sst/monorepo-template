@@ -1,12 +1,16 @@
 {
-  "name": "@monorepo-template/functions",
+  "name": "@luca-sst/functions",
   "version": "0.0.0",
   "type": "module",
   "dependencies": {
-    "@monorepo-template/core": "*",
-    "sst": "*"
+    "@aws-sdk/client-dynamodb": "^3.1001.0",
+    "@aws-sdk/lib-dynamodb": "^3.1001.0",
+    "@luca-sst/core": "*",
+    "sst": "*",
+    "uuid": "^8.0.0"
   },
   "devDependencies": {
-    "@types/aws-lambda": "^8"
+    "@types/aws-lambda": "^8.10.161",
+    "@types/uuid": "^10.0.0"
   }
 }
