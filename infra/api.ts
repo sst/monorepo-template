@@ -1,12 +1,12 @@
 import { table } from "./storage";
+import { email } from "./email";
 
-// Create the API
 // Create the API
 export const api = new sst.aws.ApiGatewayV2("Api", {
   transform: {
     route: {
       handler: {
-        link: [table],
+        link: [table, email],
       },
       args: {
         auth: { iam: true }

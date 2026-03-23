@@ -18,6 +18,16 @@ declare module "sst" {
       "id": string
       "type": "sst.aws.CognitoIdentityPool"
     }
+    "MyApi": {
+      "name": string
+      "type": "sst.aws.Function"
+      "url": string
+    }
+    "MyEmail": {
+      "configSet": string
+      "sender": string
+      "type": "sst.aws.Email"
+    }
     "Notes": {
       "name": string
       "type": "sst.aws.Dynamo"

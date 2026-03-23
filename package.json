@@ -10,6 +10,7 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@aws-sdk/client-sesv2": "^3.1013.0",
     "sst": "^3"
   }
 }

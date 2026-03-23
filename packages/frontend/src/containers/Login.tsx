@@ -1,21 +1,40 @@
 import React, { useState } from "react";
 import Form from "react-bootstrap/Form";
 import Stack from "react-bootstrap/Stack";
-import Button from "react-bootstrap/Button";
+import LoaderButton from "../components/LoaderButton.tsx";
 import "./Login.css";
+import { Auth } from "aws-amplify";
+import { useAppContext } from "../lib/contextLib";
+import { onError } from "../lib/errorLib";
+import { useFormFields } from "../lib/hooksLib";
+
+
 
 export default function Login() {
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
+    const { userHasAuthenticated } = useAppContext();
+    const [fields, handleFieldChange] = useFormFields({
+        email: "",
+        password: "",
+    });
 
     function validateForm() {
-        return email.length > 0 && password.length > 0;
+        return fields.email.length > 0 && fields.password.length > 0;
     }
 
-    function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
-    }
 
+        setIsLoading(true);
+
+        try {
+            await Auth.signIn(fields.email, fields.password);
+            userHasAuthenticated(true);
+        } catch (error) {
+            onError(error);
+            setIsLoading(false);
+        }
+    }
     return (
         <div className="Login">
             <Form onSubmit={handleSubmit}>
@@ -26,8 +45,8 @@ export default function Login() {
                             autoFocus
                             size="lg"
                             type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
+                            value={fields.email}
+                            onChange={handleFieldChange}
                         />
                     </Form.Group>
                     <Form.Group controlId="password">
@@ -35,13 +54,18 @@ export default function Login() {
                         <Form.Control
                             size="lg"
                             type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
+                            value={fields.password}
+                            onChange={handleFieldChange}
                         />
                     </Form.Group>
-                    <Button size="lg" type="submit" disabled={!validateForm()}>
+                    <LoaderButton
+                        size="lg"
+                        type="submit"
+                        isLoading={isLoading}
+                        disabled={!validateForm()}
+                    >
                         Login
-                    </Button>
+                    </LoaderButton>
                 </Stack>
             </Form>
         </div>
